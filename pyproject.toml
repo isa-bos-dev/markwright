@@ -8,6 +8,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "docling>=2.130.0",
+    "easyocr>=1.7.2",
     "pypdf>=6.19.0",
 ]
 

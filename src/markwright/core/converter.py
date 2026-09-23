@@ -5,7 +5,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from docling.datamodel.base_models import ConversionStatus, InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.datamodel.pipeline_options import EasyOcrOptions, PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.types.doc.base import ImageRefMode
 
@@ -91,6 +91,9 @@ def convert_pdf_to_md(
 
     pipeline_options = PdfPipelineOptions()
     pipeline_options.generate_picture_images = True
+    # Force EasyOCR explicitly: docling's "auto" OCR mode may otherwise pick
+    # RapidOCR, whose models are hosted on ModelScope rather than GitHub.
+    pipeline_options.ocr_options = EasyOcrOptions()
     converter = DocumentConverter(
         format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)}
     )

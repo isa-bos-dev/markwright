@@ -5,8 +5,9 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from docling.datamodel.base_models import ConversionStatus
+from docling.datamodel.base_models import ConversionStatus, InputFormat
 from docling.datamodel.document import ErrorItem, FailureCategory
+from docling.datamodel.pipeline_options import EasyOcrOptions
 from docling_core.types.doc.document import DoclingDocument
 
 from markwright.core.converter import ConversionStage, ConversionWarning, convert_pdf_to_md
@@ -216,6 +217,26 @@ def test_output_collision_uses_the_next_free_suffix(
     result_path = convert_pdf_to_md(input_path)
 
     assert result_path == input_path.parent / "input_1.md"
+
+
+def test_pipeline_uses_easyocr_and_generates_picture_images(
+    plain_pdf_factory: Callable[..., Path],
+    conversion_result_factory: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import markwright.core.converter as converter_module
+
+    fake_converter_class = MagicMock()
+    fake_converter_class.return_value.convert.return_value = conversion_result_factory()
+    monkeypatch.setattr(converter_module, "DocumentConverter", fake_converter_class)
+    input_path = plain_pdf_factory()
+
+    convert_pdf_to_md(input_path)
+
+    format_options = fake_converter_class.call_args.kwargs["format_options"]
+    pipeline_options = format_options[InputFormat.PDF].pipeline_options
+    assert isinstance(pipeline_options.ocr_options, EasyOcrOptions)
+    assert pipeline_options.generate_picture_images is True
 
 
 # --- Partial success ---

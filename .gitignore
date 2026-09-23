@@ -35,3 +35,6 @@ Thumbs.db
 
 # Internal planning docs (kept local only, not published)
 docs/
+
+# Local ML models (large binaries, downloaded manually)
+models/

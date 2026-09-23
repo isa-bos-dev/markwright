@@ -3,8 +3,10 @@ name = "markwright"
 version = "0.1.0"
 description = "Local, privacy-first PDF to Markdown converter with dual CLI/GUI and bilingual interface."
 authors = [
-    { name = "IsabBosDev", email = "isabosdev@gmail.com" }
+    { name = "IsaBosDev" }
 ]
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.12"
 dependencies = [
     "docling>=2.130.0",

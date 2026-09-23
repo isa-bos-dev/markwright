@@ -1,13 +1,9 @@
+import os
 import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-
-from docling.datamodel.base_models import ConversionStatus, InputFormat
-from docling.datamodel.pipeline_options import EasyOcrOptions, PdfPipelineOptions
-from docling.document_converter import DocumentConverter, PdfFormatOption
-from docling_core.types.doc.base import ImageRefMode
 
 from markwright.core.exceptions import (
     CorruptFileError,
@@ -15,6 +11,7 @@ from markwright.core.exceptions import (
     OutputWriteError,
     UnsupportedFileError,
 )
+from markwright.core.models import find_models_dir
 from markwright.core.paths import OutputPaths, resolve_output_paths
 from markwright.core.pdf_source import prepare_docling_source
 
@@ -89,20 +86,12 @@ def convert_pdf_to_md(
 
     report(ConversionStage.CONVERTING)
 
-    pipeline_options = PdfPipelineOptions()
-    pipeline_options.generate_picture_images = True
-    # Force EasyOCR explicitly: docling's "auto" OCR mode may otherwise pick
-    # RapidOCR, whose models are hosted on ModelScope rather than GitHub.
-    pipeline_options.ocr_options = EasyOcrOptions()
-    converter = DocumentConverter(
-        format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)}
-    )
     try:
-        result = converter.convert(source, raises_on_error=True)
+        result = _build_converter().convert(source, raises_on_error=True)
     except Exception as exc:
         raise CorruptFileError(input_path) from exc
 
-    if result.status == ConversionStatus.PARTIAL_SUCCESS:
+    if _is_partial_success(result):
         report(ConversionStage.PARTIAL_SUCCESS, _classify_partial_success(result))
 
     report(ConversionStage.WRITING)
@@ -112,7 +101,44 @@ def convert_pdf_to_md(
     return output_paths.markdown_path
 
 
+def _build_converter():
+    """Create the docling converter configured for Markwright.
+
+    docling pulls in PyTorch, which takes ~5 s to import. Importing it here, on
+    the first conversion, keeps the GUI window and ``--help`` instant.
+    """
+    models_dir = find_models_dir()
+    if models_dir is not None:
+        # Everything needed is on disk: never go online, so document content and
+        # the user's IP address stay private. Must be set before docling is imported.
+        os.environ.setdefault("HF_HUB_OFFLINE", "1")
+        os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
+    from docling.datamodel.base_models import InputFormat
+    from docling.datamodel.pipeline_options import EasyOcrOptions, PdfPipelineOptions
+    from docling.document_converter import DocumentConverter, PdfFormatOption
+
+    pipeline_options = PdfPipelineOptions()
+    pipeline_options.generate_picture_images = True
+    # Force EasyOCR explicitly: docling's "auto" OCR mode may otherwise pick
+    # RapidOCR, whose models are hosted on ModelScope rather than GitHub.
+    pipeline_options.ocr_options = EasyOcrOptions()
+    if models_dir is not None:
+        pipeline_options.artifacts_path = models_dir
+    return DocumentConverter(
+        format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)}
+    )
+
+
+def _is_partial_success(result) -> bool:
+    from docling.datamodel.base_models import ConversionStatus
+
+    return result.status == ConversionStatus.PARTIAL_SUCCESS
+
+
 def _write_markdown(document, output_paths: OutputPaths) -> None:
+    from docling_core.types.doc.base import ImageRefMode
+
     has_pictures = bool(document.pictures)
     try:
         if has_pictures:

@@ -1,3 +1,4 @@
+import os
 import shutil
 from collections.abc import Callable
 from pathlib import Path
@@ -219,24 +220,97 @@ def test_output_collision_uses_the_next_free_suffix(
     assert result_path == input_path.parent / "input_1.md"
 
 
+_OFFLINE_VARIABLES = ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE")
+
+
+def _run_and_capture_pipeline_options(
+    monkeypatch: pytest.MonkeyPatch,
+    input_path: Path,
+    result: SimpleNamespace,
+    environment: dict[str, str] | None = None,
+) -> object:
+    """Convert with a fake DocumentConverter class and return the pipeline options used.
+
+    ``environment`` replaces ``os.environ`` for the run, so the offline flags the
+    converter sets never leak into other tests.
+    """
+    fake_converter_class = MagicMock()
+    fake_converter_class.return_value.convert.return_value = result
+    monkeypatch.setattr("docling.document_converter.DocumentConverter", fake_converter_class)
+    if environment is not None:
+        monkeypatch.setattr(os, "environ", environment)
+
+    convert_pdf_to_md(input_path)
+
+    format_options = fake_converter_class.call_args.kwargs["format_options"]
+    return format_options[InputFormat.PDF].pipeline_options
+
+
+def _environment_without_offline_flags() -> dict[str, str]:
+    return {k: v for k, v in os.environ.items() if k not in _OFFLINE_VARIABLES}
+
+
 def test_pipeline_uses_easyocr_and_generates_picture_images(
     plain_pdf_factory: Callable[..., Path],
     conversion_result_factory: Callable[..., SimpleNamespace],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import markwright.core.converter as converter_module
+    options = _run_and_capture_pipeline_options(
+        monkeypatch, plain_pdf_factory(), conversion_result_factory()
+    )
 
-    fake_converter_class = MagicMock()
-    fake_converter_class.return_value.convert.return_value = conversion_result_factory()
-    monkeypatch.setattr(converter_module, "DocumentConverter", fake_converter_class)
-    input_path = plain_pdf_factory()
+    assert isinstance(options.ocr_options, EasyOcrOptions)
+    assert options.generate_picture_images is True
 
-    convert_pdf_to_md(input_path)
 
-    format_options = fake_converter_class.call_args.kwargs["format_options"]
-    pipeline_options = format_options[InputFormat.PDF].pipeline_options
-    assert isinstance(pipeline_options.ocr_options, EasyOcrOptions)
-    assert pipeline_options.generate_picture_images is True
+def test_a_local_models_folder_is_used_and_keeps_the_conversion_offline(
+    plain_pdf_factory: Callable[..., Path],
+    conversion_result_factory: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    models = tmp_path / "models"
+    monkeypatch.setattr("markwright.core.converter.find_models_dir", lambda: models)
+    environment = _environment_without_offline_flags()
+
+    options = _run_and_capture_pipeline_options(
+        monkeypatch, plain_pdf_factory(), conversion_result_factory(), environment
+    )
+
+    assert options.artifacts_path == models
+    assert environment["HF_HUB_OFFLINE"] == "1"
+    assert environment["TRANSFORMERS_OFFLINE"] == "1"
+
+
+def test_an_explicit_offline_setting_from_the_user_is_respected(
+    plain_pdf_factory: Callable[..., Path],
+    conversion_result_factory: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr("markwright.core.converter.find_models_dir", lambda: tmp_path)
+    environment = _environment_without_offline_flags() | {"HF_HUB_OFFLINE": "0"}
+
+    _run_and_capture_pipeline_options(
+        monkeypatch, plain_pdf_factory(), conversion_result_factory(), environment
+    )
+
+    assert environment["HF_HUB_OFFLINE"] == "0"
+
+
+def test_without_a_local_models_folder_the_docling_defaults_are_left_untouched(
+    plain_pdf_factory: Callable[..., Path],
+    conversion_result_factory: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    environment = _environment_without_offline_flags()
+
+    options = _run_and_capture_pipeline_options(
+        monkeypatch, plain_pdf_factory(), conversion_result_factory(), environment
+    )
+
+    assert options.artifacts_path is None
+    assert not set(_OFFLINE_VARIABLES) & environment.keys()
 
 
 # --- Partial success ---

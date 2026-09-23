@@ -1,11 +1,16 @@
+from __future__ import annotations
+
 from io import BytesIO
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from docling.datamodel.base_models import DocumentStream
 from pypdf import PdfReader, PdfWriter
 from pypdf.errors import WrongPasswordError
 
 from markwright.core.exceptions import InvalidPasswordError
+
+if TYPE_CHECKING:
+    from docling.datamodel.base_models import DocumentStream
 
 
 def prepare_docling_source(input_path: Path, password: str | None = None) -> Path | DocumentStream:
@@ -34,4 +39,7 @@ def prepare_docling_source(input_path: Path, password: str | None = None) -> Pat
     buffer = BytesIO()
     writer.write(buffer)
     buffer.seek(0)
+    # Imported here: any docling import costs ~5 s (it loads PyTorch).
+    from docling.datamodel.base_models import DocumentStream
+
     return DocumentStream(name=input_path.name, stream=buffer)

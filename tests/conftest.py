@@ -109,8 +109,14 @@ def error_item_factory() -> Callable[..., ErrorItem]:
 @pytest.fixture
 def mock_docling_convert(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Patch DocumentConverter.convert so no real (network-dependent) conversion runs."""
-    import markwright.core.converter as converter_module
+    from docling.document_converter import DocumentConverter
 
     mock = MagicMock()
-    monkeypatch.setattr(converter_module.DocumentConverter, "convert", mock)
+    monkeypatch.setattr(DocumentConverter, "convert", mock)
     return mock
+
+
+@pytest.fixture(autouse=True)
+def no_local_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep tests independent from any models/ folder present on the developer's machine."""
+    monkeypatch.setattr("markwright.core.converter.find_models_dir", lambda: None)

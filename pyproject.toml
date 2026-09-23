@@ -23,6 +23,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
     "ruff>=0.16.8",
 ]
 
@@ -41,3 +42,12 @@ markers = [
 # --capture=sys: pytest's default fd-level capture breaks Tcl/Tk start-up on Windows
 # ("Can't find a usable init.tcl") when a second Tk interpreter is created.
 addopts = "-m 'not integration' --capture=sys"
+
+# Run with:  uv run pytest --cov      (opt-in: it makes the suite ~2.5x slower)
+[tool.coverage.run]
+source = ["markwright"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+fail_under = 95

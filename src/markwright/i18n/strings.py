@@ -36,6 +36,16 @@ STRINGS: dict[str, dict[str, str]] = {
             "An unexpected error occurred. Run with --verbose for more details."
         ),
         "language_selector.prompt": "Select your language",
+        "error.unexpected_gui": "An unexpected error occurred. Please try again.",
+        "main.subtitle": "Convert a PDF to Markdown",
+        "main.choose_file": "Choose PDF…",
+        "main.file_dialog_title": "Select a PDF file",
+        "main.file_type_pdf": "PDF files",
+        "main.no_file": "No file selected",
+        "main.password": "Password",
+        "main.convert": "Convert to Markdown",
+        "main.saved_to": "Saved to: {path}",
+        "main.open_folder": "Open folder",
     },
     "es": {
         "error.unsupported_file": (
@@ -69,6 +79,16 @@ STRINGS: dict[str, dict[str, str]] = {
             "Ocurrió un error inesperado. Ejecuta con --verbose para más detalles."
         ),
         "language_selector.prompt": "Selecciona tu idioma",
+        "error.unexpected_gui": "Ocurrió un error inesperado. Inténtalo de nuevo.",
+        "main.subtitle": "Convierte un PDF a Markdown",
+        "main.choose_file": "Elegir PDF…",
+        "main.file_dialog_title": "Selecciona un archivo PDF",
+        "main.file_type_pdf": "Archivos PDF",
+        "main.no_file": "Ningún archivo seleccionado",
+        "main.password": "Contraseña",
+        "main.convert": "Convertir a Markdown",
+        "main.saved_to": "Guardado en: {path}",
+        "main.open_folder": "Abrir carpeta",
     },
 }
 

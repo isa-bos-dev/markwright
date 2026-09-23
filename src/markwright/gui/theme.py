@@ -15,3 +15,7 @@ def apply_theme(root: tk.Tk) -> None:
     style.configure("Title.TLabel", font="SunValleyTitleFont")
     style.configure("Subtitle.TLabel", font="SunValleyBodyLargeFont")
     style.configure("Language.Accent.TButton", font="SunValleyBodyLargeFont", padding=(36, 14))
+    # Windows 11 status palette, dark enough for readable contrast on white.
+    style.configure("Success.TLabel", foreground="#0f7b0f")
+    style.configure("Warning.TLabel", foreground="#9d5d00")
+    style.configure("Error.TLabel", foreground="#c42b1c")

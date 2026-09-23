@@ -1,5 +1,6 @@
 import os
 import shutil
+import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
@@ -74,6 +75,7 @@ def convert_pdf_to_md(
     report(ConversionStage.STARTED)
 
     output_paths = resolve_output_paths(input_path, output_path)
+    models_dir = _prepare_runtime()
 
     try:
         source = prepare_docling_source(input_path, password)
@@ -87,7 +89,7 @@ def convert_pdf_to_md(
     report(ConversionStage.CONVERTING)
 
     try:
-        result = _build_converter().convert(source, raises_on_error=True)
+        result = _build_converter(models_dir).convert(source, raises_on_error=True)
     except Exception as exc:
         raise CorruptFileError(input_path) from exc
 
@@ -101,19 +103,32 @@ def convert_pdf_to_md(
     return output_paths.markdown_path
 
 
-def _build_converter():
+def _prepare_runtime() -> Path | None:
+    """Configure the environment before anything imports docling; return the models folder.
+
+    Must run first: even decrypting a protected PDF imports docling (and with it
+    tqdm and huggingface_hub), which read these settings at import time.
+    """
+    # Third-party chatter (PyTorch deprecation notes, model-loading progress
+    # bars) looks like errors to end users and carries nothing they can act on.
+    os.environ.setdefault("TQDM_DISABLE", "1")
+    warnings.filterwarnings("ignore", category=UserWarning, module=r"torch(\.|$)")
+
+    models_dir = find_models_dir()
+    if models_dir is not None:
+        # Everything needed is on disk: never go online, so document content and
+        # the user's IP address stay private.
+        os.environ.setdefault("HF_HUB_OFFLINE", "1")
+        os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+    return models_dir
+
+
+def _build_converter(models_dir: Path | None):
     """Create the docling converter configured for Markwright.
 
     docling pulls in PyTorch, which takes ~5 s to import. Importing it here, on
     the first conversion, keeps the GUI window and ``--help`` instant.
     """
-    models_dir = find_models_dir()
-    if models_dir is not None:
-        # Everything needed is on disk: never go online, so document content and
-        # the user's IP address stay private. Must be set before docling is imported.
-        os.environ.setdefault("HF_HUB_OFFLINE", "1")
-        os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
-
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import EasyOcrOptions, PdfPipelineOptions
     from docling.document_converter import DocumentConverter, PdfFormatOption

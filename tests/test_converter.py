@@ -1,5 +1,6 @@
 import os
 import shutil
+import warnings
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
@@ -296,6 +297,50 @@ def test_an_explicit_offline_setting_from_the_user_is_respected(
     )
 
     assert environment["HF_HUB_OFFLINE"] == "0"
+
+
+def test_third_party_chatter_is_silenced_for_end_users(
+    plain_pdf_factory: Callable[..., Path],
+    conversion_result_factory: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    environment = _environment_without_offline_flags()
+    environment.pop("TQDM_DISABLE", None)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _run_and_capture_pipeline_options(
+            monkeypatch, plain_pdf_factory(), conversion_result_factory(), environment
+        )
+        warnings.warn_explicit(
+            "deprecated", UserWarning, "torch/ao/rnn.py", 1, module="torch.ao.nn.quantized"
+        )
+
+    assert environment["TQDM_DISABLE"] == "1"
+    assert caught == []
+
+
+def test_the_runtime_is_prepared_before_any_docling_import(
+    plain_pdf_factory: Callable[..., Path],
+    conversion_result_factory: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Decrypting a protected PDF imports docling too, so the setup must come first."""
+    environment = _environment_without_offline_flags()
+    environment.pop("TQDM_DISABLE", None)
+    seen: dict[str, str | None] = {}
+
+    def spy(input_path: Path, password: str | None = None) -> Path:
+        seen["tqdm"] = environment.get("TQDM_DISABLE")
+        return input_path
+
+    monkeypatch.setattr("markwright.core.converter.prepare_docling_source", spy)
+
+    _run_and_capture_pipeline_options(
+        monkeypatch, plain_pdf_factory(), conversion_result_factory(), environment
+    )
+
+    assert seen["tqdm"] == "1"
 
 
 def test_without_a_local_models_folder_the_docling_defaults_are_left_untouched(

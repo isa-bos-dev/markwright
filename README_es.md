@@ -7,7 +7,7 @@
 
 ---
 
-A local, privacy-first PDF to Markdown converter that preserves tables, headings and images. Built with a beginner-friendly GUI and a scriptable CLI, so both non-technical users and developers can use it — no internet connection required after setup, available in English and Spanish.
+Un conversor de PDF a Markdown local y respetuoso con la privacidad, que preserva tablas, encabezados e imágenes. Construido con una interfaz gráfica sencilla y una CLI para scripting, pensado tanto para usuarios sin conocimientos técnicos como para desarrolladores — sin necesitar conexión a internet tras la configuración inicial, disponible en inglés y español.
 
 <!-- Tech Stack Badges -->
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
@@ -21,4 +21,4 @@ A local, privacy-first PDF to Markdown converter that preserves tables, headings
 
 ---
 
-**Status:** In development. Full documentation, features and usage instructions will land as the project progresses.
+**Estado:** En desarrollo. La documentación completa, las funcionalidades y las instrucciones de uso se irán añadiendo a medida que avance el proyecto.

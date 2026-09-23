@@ -10,6 +10,7 @@ from tkinter import filedialog, ttk
 from markwright import APP_NAME
 from markwright.core.converter import ConversionStage
 from markwright.core.exceptions import InvalidPasswordError
+from markwright.gui.assets import load_image
 from markwright.gui.worker import ConversionJob, DoneEvent, Event, FailedEvent, ProgressEvent
 from markwright.i18n import t
 from markwright.i18n.errors import ERROR_MESSAGE_KEYS
@@ -40,25 +41,29 @@ class MainScreen(ttk.Frame):
         return t(key, self._language, **values)
 
     def _build(self) -> None:
-        ttk.Label(self, text=APP_NAME, style="Title.TLabel").grid(
-            row=0, column=0, columnspan=2, sticky="w"
+        header = ttk.Frame(self)
+        header.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 24))
+        self._logo = load_image("logo-56.png", self)
+        ttk.Label(header, image=self._logo).grid(row=0, column=0, rowspan=2)
+        ttk.Label(header, text=APP_NAME, style="Title.TLabel").grid(
+            row=0, column=1, sticky="sw", padx=(16, 0)
         )
-        ttk.Label(self, text=self._t("main.subtitle"), style="Subtitle.TLabel").grid(
-            row=1, column=0, columnspan=2, sticky="w", pady=(4, 24)
+        ttk.Label(header, text=self._t("main.subtitle"), style="Subtitle.TLabel").grid(
+            row=1, column=1, sticky="nw", padx=(16, 0)
         )
 
         self.choose_button = ttk.Button(
             self, text=self._t("main.choose_file"), command=self._choose_file
         )
-        self.choose_button.grid(row=2, column=0, sticky="w")
+        self.choose_button.grid(row=1, column=0, sticky="w")
         self.file_label = ttk.Label(self, text=self._t("main.no_file"))
-        self.file_label.grid(row=2, column=1, sticky="w", padx=(16, 0))
+        self.file_label.grid(row=1, column=1, sticky="w", padx=(16, 0))
 
         self.password_label = ttk.Label(self, text=self._t("main.password"))
         self.password_entry = ttk.Entry(self, textvariable=self._password, show=_PASSWORD_MASK)
         self.password_entry.bind("<Return>", lambda _event: self._start_conversion())
-        self.password_label.grid(row=3, column=0, sticky="w", pady=(16, 0))
-        self.password_entry.grid(row=3, column=1, sticky="ew", padx=(16, 0), pady=(16, 0))
+        self.password_label.grid(row=2, column=0, sticky="w", pady=(16, 0))
+        self.password_entry.grid(row=2, column=1, sticky="ew", padx=(16, 0), pady=(16, 0))
         self._set_password_visible(False)
 
         self.convert_button = ttk.Button(
@@ -67,20 +72,20 @@ class MainScreen(ttk.Frame):
             style="Accent.TButton",
             command=self._start_conversion,
         )
-        self.convert_button.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(24, 0))
+        self.convert_button.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(24, 0))
         self.convert_button.state(["disabled"])
 
         self.progress = ttk.Progressbar(self, mode="indeterminate")
-        self.progress.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(24, 0))
+        self.progress.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(24, 0))
         self.progress.grid_remove()
 
         self.status_label = ttk.Label(self, wraplength=_MESSAGE_WIDTH_PX, justify="left")
-        self.status_label.grid(row=6, column=0, columnspan=2, sticky="w", pady=(16, 0))
+        self.status_label.grid(row=5, column=0, columnspan=2, sticky="w", pady=(16, 0))
 
         self.open_folder_button = ttk.Button(
             self, text=self._t("main.open_folder"), command=self._open_folder
         )
-        self.open_folder_button.grid(row=7, column=0, columnspan=2, sticky="w", pady=(12, 0))
+        self.open_folder_button.grid(row=6, column=0, columnspan=2, sticky="w", pady=(12, 0))
         self.open_folder_button.grid_remove()
 
         # A stable minimum width keeps the window from jumping between states.

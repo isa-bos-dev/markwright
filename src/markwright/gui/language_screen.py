@@ -4,6 +4,7 @@ from functools import partial
 from tkinter import ttk
 
 from markwright import APP_NAME
+from markwright.gui.assets import load_image
 from markwright.i18n import SUPPORTED_LANGUAGES, t
 
 _PROMPT_SEPARATOR = " / "
@@ -23,12 +24,14 @@ class LanguageScreen(ttk.Frame):
         super().__init__(parent, padding=(48, 40))
         columns = len(SUPPORTED_LANGUAGES)
 
+        self._logo = load_image("logo-96.png", self)
+        ttk.Label(self, image=self._logo).grid(row=0, column=0, columnspan=columns, pady=(0, 16))
         ttk.Label(self, text=APP_NAME, style="Title.TLabel").grid(
-            row=0, column=0, columnspan=columns
+            row=1, column=0, columnspan=columns
         )
         ttk.Label(
             self, text=build_language_prompt(), style="Subtitle.TLabel", justify="center"
-        ).grid(row=1, column=0, columnspan=columns, pady=(8, 32))
+        ).grid(row=2, column=0, columnspan=columns, pady=(8, 32))
 
         self.buttons: dict[str, ttk.Button] = {}
         for column, (code, name) in enumerate(SUPPORTED_LANGUAGES.items()):
@@ -38,5 +41,5 @@ class LanguageScreen(ttk.Frame):
                 style="Language.Accent.TButton",
                 command=partial(on_selected, code),
             )
-            button.grid(row=2, column=column, padx=8, sticky="ew")
+            button.grid(row=3, column=column, padx=8, sticky="ew")
             self.buttons[code] = button

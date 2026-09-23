@@ -9,6 +9,7 @@ import pytest
 
 from markwright.core.converter import ConversionStage, ConversionWarning
 from markwright.core.exceptions import InvalidPasswordError
+from markwright.gui.assets import load_image
 from markwright.gui.gui import App
 from markwright.gui.language_screen import LanguageScreen, build_language_prompt
 from markwright.gui.main_screen import MainScreen
@@ -72,6 +73,12 @@ def _choose_pdf(screen: MainScreen, monkeypatch: pytest.MonkeyPatch, path: Path)
 
 def _fake_conversion(monkeypatch: pytest.MonkeyPatch, fake: Callable[..., Path]) -> None:
     monkeypatch.setattr("markwright.gui.worker.convert_pdf_to_md", fake)
+
+
+def test_packaged_images_load_at_their_declared_size(tk_root: tk.Tk) -> None:
+    image = load_image("logo-96.png", tk_root)
+
+    assert (image.width(), image.height()) == (96, 96)
 
 
 # --- Language screen ---

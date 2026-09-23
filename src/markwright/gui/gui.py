@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from markwright import APP_NAME
+from markwright.gui.assets import load_image
 from markwright.gui.language_screen import LanguageScreen
 from markwright.gui.main_screen import MainScreen
 from markwright.gui.theme import apply_theme
@@ -14,6 +15,8 @@ class App(tk.Tk):
         super().__init__()
         self.title(APP_NAME)
         self.resizable(False, False)
+        self._window_icons = [load_image(f"icon-{side}.png", self) for side in (32, 64, 256)]
+        self.iconphoto(True, *self._window_icons)
         apply_theme(self)
 
         self.screen: ttk.Frame = LanguageScreen(self, on_selected=self._on_language_selected)

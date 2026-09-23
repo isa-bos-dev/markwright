@@ -36,6 +36,10 @@ STRINGS: dict[str, dict[str, str]] = {
             "An unexpected error occurred. Run with --verbose for more details."
         ),
         "language_selector.prompt": "Select your language",
+        "error.gui_unavailable": (
+            "The graphical interface could not be started ({reason}). "
+            "You can still use the command line: markwright <file.pdf>"
+        ),
         "error.unexpected_gui": "An unexpected error occurred. Please try again.",
         "main.subtitle": "Convert a PDF to Markdown",
         "main.choose_file": "Choose PDF…",
@@ -79,6 +83,10 @@ STRINGS: dict[str, dict[str, str]] = {
             "Ocurrió un error inesperado. Ejecuta con --verbose para más detalles."
         ),
         "language_selector.prompt": "Selecciona tu idioma",
+        "error.gui_unavailable": (
+            "No se pudo iniciar la interfaz gráfica ({reason}). "
+            "Puedes usar la línea de comandos: markwright <archivo.pdf>"
+        ),
         "error.unexpected_gui": "Ocurrió un error inesperado. Inténtalo de nuevo.",
         "main.subtitle": "Convierte un PDF a Markdown",
         "main.choose_file": "Elegir PDF…",

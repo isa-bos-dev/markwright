@@ -1,3 +1,4 @@
+import socket
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
@@ -117,6 +118,22 @@ def mock_docling_convert(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 
 @pytest.fixture(autouse=True)
-def no_local_models(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep tests independent from any models/ folder present on the developer's machine."""
+def no_local_models(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep tests independent from any models/ folder present on the developer's machine.
+
+    Integration tests are the exception: they exist to use the real models.
+    """
+    if request.node.get_closest_marker("integration"):
+        return
     monkeypatch.setattr("markwright.core.converter.find_models_dir", lambda: None)
+
+
+@pytest.fixture(autouse=True)
+def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test may go online: privacy (Constitution Principle 10), speed and determinism."""
+
+    def blocked(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("network access is not allowed in tests")
+
+    monkeypatch.setattr(socket.socket, "connect", blocked)
+    monkeypatch.setattr(socket.socket, "connect_ex", blocked)

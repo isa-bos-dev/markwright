@@ -219,6 +219,34 @@ def test_unexpected_error_with_verbose_shows_traceback(
     assert "Traceback" in captured.err
 
 
+def test_verbose_shows_the_technical_cause_of_a_domain_error(
+    mock_convert: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    error = CorruptFileError(Path("report.pdf"))
+    error.__cause__ = ValueError("parser exploded")
+    mock_convert.side_effect = error
+
+    run(["report.pdf", "--verbose"])
+
+    error_output = capsys.readouterr().err
+    assert "[debug]" in error_output
+    assert "parser exploded" in error_output
+
+
+def test_technical_details_are_hidden_without_verbose(
+    mock_convert: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    error = CorruptFileError(Path("report.pdf"))
+    error.__cause__ = ValueError("parser exploded")
+    mock_convert.side_effect = error
+
+    run(["report.pdf"])
+
+    error_output = capsys.readouterr().err
+    assert "[debug]" not in error_output
+    assert "parser exploded" not in error_output
+
+
 def test_unsupported_language_is_rejected_by_argparse(
     mock_convert: MagicMock, capsys: pytest.CaptureFixture[str]
 ) -> None:

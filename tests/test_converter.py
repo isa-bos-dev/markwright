@@ -468,7 +468,20 @@ def test_corrupt_pdf_content_detected_before_docling_raises_corrupt_file_error(
     mock_docling_convert.assert_not_called()
 
 
-def test_write_failure_raises_output_write_error_and_cleans_up(
+def _partial_write_then_fail(error: OSError) -> Callable[..., None]:
+    """A save_as_markdown stand-in that leaves partial output behind and then fails."""
+
+    def save(filename, artifacts_dir=None, **kwargs) -> None:
+        markdown = Path(filename)
+        markdown.write_text("partial")
+        if artifacts_dir is not None:
+            (markdown.parent / artifacts_dir).mkdir()
+        raise error
+
+    return save
+
+
+def test_write_failure_raises_output_write_error_and_removes_the_partial_output(
     plain_pdf_factory: Callable[..., Path],
     conversion_result_factory: Callable[..., SimpleNamespace],
     mock_docling_convert: MagicMock,
@@ -476,11 +489,8 @@ def test_write_failure_raises_output_write_error_and_cleans_up(
 ) -> None:
     input_path = plain_pdf_factory()
     mock_docling_convert.return_value = conversion_result_factory(with_picture=True)
-    monkeypatch.setattr(
-        DoclingDocument,
-        "save_as_markdown",
-        MagicMock(side_effect=OSError("disk full")),
-    )
+    failing_save = _partial_write_then_fail(OSError("disk full"))
+    monkeypatch.setattr(DoclingDocument, "save_as_markdown", MagicMock(side_effect=failing_save))
 
     with pytest.raises(OutputWriteError):
         convert_pdf_to_md(input_path)
@@ -510,11 +520,10 @@ def test_output_write_error_is_raised_even_if_cleanup_itself_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     input_path = plain_pdf_factory()
-    mock_docling_convert.return_value = conversion_result_factory()
+    mock_docling_convert.return_value = conversion_result_factory(with_picture=True)
     original_cause = OSError("disk full")
-    monkeypatch.setattr(
-        DoclingDocument, "save_as_markdown", MagicMock(side_effect=original_cause)
-    )
+    failing_save = _partial_write_then_fail(original_cause)
+    monkeypatch.setattr(DoclingDocument, "save_as_markdown", MagicMock(side_effect=failing_save))
     monkeypatch.setattr(Path, "unlink", MagicMock(side_effect=OSError("cleanup failed")))
     monkeypatch.setattr(shutil, "rmtree", MagicMock(side_effect=OSError("cleanup failed")))
 
@@ -522,6 +531,18 @@ def test_output_write_error_is_raised_even_if_cleanup_itself_fails(
         convert_pdf_to_md(input_path)
 
     assert exc_info.value.__cause__ is original_cause
+
+
+def test_a_file_that_disappears_while_being_prepared_is_reported_as_unsupported(
+    plain_pdf_factory: Callable[..., Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def vanished(input_path: Path, password: str | None = None) -> Path:
+        raise FileNotFoundError(input_path)
+
+    monkeypatch.setattr("markwright.core.converter.prepare_docling_source", vanished)
+
+    with pytest.raises(UnsupportedFileError):
+        convert_pdf_to_md(plain_pdf_factory())
 
 
 def test_on_progress_exception_propagates_unwrapped(

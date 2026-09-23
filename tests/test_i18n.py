@@ -1,8 +1,29 @@
 import pytest
 
+from markwright.core.exceptions import (
+    CorruptFileError,
+    InvalidPasswordError,
+    OutputWriteError,
+    UnsupportedFileError,
+)
+from markwright.i18n.errors import ERROR_MESSAGE_KEYS
 from markwright.i18n.strings import DEFAULT_LANGUAGE, STRINGS, SUPPORTED_LANGUAGES, t
 
 # --- Success cases ---
+
+
+@pytest.mark.parametrize(
+    "error_type",
+    [UnsupportedFileError, InvalidPasswordError, CorruptFileError, OutputWriteError],
+)
+def test_every_domain_error_maps_to_a_message_translated_in_every_language(
+    error_type: type[Exception],
+) -> None:
+    key = ERROR_MESSAGE_KEYS[error_type]
+
+    for language in SUPPORTED_LANGUAGES:
+        assert key in STRINGS[language]
+
 
 
 def test_supported_languages_maps_codes_to_native_names() -> None:

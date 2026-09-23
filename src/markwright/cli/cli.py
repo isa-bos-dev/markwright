@@ -12,6 +12,7 @@ from markwright.core.exceptions import (
     UnsupportedFileError,
 )
 from markwright.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, t
+from markwright.i18n.errors import ERROR_MESSAGE_KEYS
 
 EXIT_SUCCESS = 0
 EXIT_UNSUPPORTED_FILE = 1
@@ -20,11 +21,11 @@ EXIT_CORRUPT_FILE = 3
 EXIT_OUTPUT_WRITE_FAILED = 4
 EXIT_UNEXPECTED_ERROR = 70
 
-_EXIT_CODE_BY_EXCEPTION: dict[type[ConversionError], tuple[int, str]] = {
-    UnsupportedFileError: (EXIT_UNSUPPORTED_FILE, "error.unsupported_file"),
-    InvalidPasswordError: (EXIT_INVALID_PASSWORD, "error.invalid_password"),
-    CorruptFileError: (EXIT_CORRUPT_FILE, "error.corrupt_file"),
-    OutputWriteError: (EXIT_OUTPUT_WRITE_FAILED, "error.output_write_failed"),
+_EXIT_CODE_BY_EXCEPTION: dict[type[ConversionError], int] = {
+    UnsupportedFileError: EXIT_UNSUPPORTED_FILE,
+    InvalidPasswordError: EXIT_INVALID_PASSWORD,
+    CorruptFileError: EXIT_CORRUPT_FILE,
+    OutputWriteError: EXIT_OUTPUT_WRITE_FAILED,
 }
 
 
@@ -82,11 +83,9 @@ def run(argv: Sequence[str] | None = None) -> int:
             on_progress=on_progress,
         )
     except ConversionError as exc:
-        exit_code, message_key = _EXIT_CODE_BY_EXCEPTION.get(
-            type(exc), (EXIT_UNEXPECTED_ERROR, "error.unexpected")
-        )
+        message_key = ERROR_MESSAGE_KEYS.get(type(exc), "error.unexpected")
         _print_domain_error(exc, message_key, lang, args.verbose)
-        return exit_code
+        return _EXIT_CODE_BY_EXCEPTION.get(type(exc), EXIT_UNEXPECTED_ERROR)
     except Exception as exc:  # noqa: BLE001 - deliberate catch-all, see _print_unexpected_error
         _print_unexpected_error(exc, args.verbose)
         return EXIT_UNEXPECTED_ERROR

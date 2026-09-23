@@ -29,6 +29,9 @@ STRINGS: dict[str, dict[str, str]] = {
             "correctly. This is likely due to the content of those pages, not "
             "a temporary issue."
         ),
+        "error.unexpected": (
+            "An unexpected error occurred. Run with --verbose for more details."
+        ),
     },
     "es": {
         "error.unsupported_file": (
@@ -57,6 +60,9 @@ STRINGS: dict[str, dict[str, str]] = {
             "La conversión terminó, pero algunas páginas no se pudieron procesar "
             "correctamente. Probablemente se deba al contenido de esas páginas, "
             "no a un problema temporal."
+        ),
+        "error.unexpected": (
+            "Ocurrió un error inesperado. Ejecuta con --verbose para más detalles."
         ),
     },
 }

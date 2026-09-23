@@ -10,6 +10,7 @@ dependencies = [
     "docling>=2.130.0",
     "easyocr>=1.7.2",
     "pypdf>=6.19.0",
+    "sv-ttk>=2.6.1",
 ]
 
 [build-system]
@@ -34,4 +35,6 @@ testpaths = ["tests"]
 markers = [
     "integration: slow tests that run a real docling conversion (excluded by default)",
 ]
-addopts = "-m 'not integration'"
+# --capture=sys: pytest's default fd-level capture breaks Tcl/Tk start-up on Windows
+# ("Can't find a usable init.tcl") when a second Tk interpreter is created.
+addopts = "-m 'not integration' --capture=sys"

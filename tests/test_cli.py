@@ -219,6 +219,17 @@ def test_unexpected_error_with_verbose_shows_traceback(
     assert "Traceback" in captured.err
 
 
+def test_unsupported_language_is_rejected_by_argparse(
+    mock_convert: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        run(["report.pdf", "--lang", "fr"])
+
+    assert exc_info.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err
+    mock_convert.assert_not_called()
+
+
 def test_password_never_appears_in_any_printed_output(
     mock_convert: MagicMock, capsys: pytest.CaptureFixture[str]
 ) -> None:

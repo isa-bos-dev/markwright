@@ -1,8 +1,26 @@
 import pytest
 
-from markwright.i18n.strings import STRINGS, t
+from markwright.i18n.strings import DEFAULT_LANGUAGE, STRINGS, SUPPORTED_LANGUAGES, t
 
 # --- Success cases ---
+
+
+def test_supported_languages_maps_codes_to_native_names() -> None:
+    assert SUPPORTED_LANGUAGES == {"en": "English", "es": "Español"}
+
+
+def test_supported_languages_match_the_languages_with_translations() -> None:
+    assert set(SUPPORTED_LANGUAGES) == set(STRINGS)
+
+
+def test_default_language_is_supported() -> None:
+    assert DEFAULT_LANGUAGE in SUPPORTED_LANGUAGES
+
+
+def test_language_selector_prompt_has_a_translation_in_every_language() -> None:
+    for language in SUPPORTED_LANGUAGES:
+        assert "language_selector.prompt" in STRINGS[language]
+
 
 
 def test_t_returns_english_text_for_known_key() -> None:

@@ -1,5 +1,8 @@
 DEFAULT_LANGUAGE = "en"
 
+# Language code -> native name (never translated: each speaker recognises their own).
+SUPPORTED_LANGUAGES: dict[str, str] = {"en": "English", "es": "Español"}
+
 STRINGS: dict[str, dict[str, str]] = {
     "en": {
         "error.unsupported_file": (
@@ -32,6 +35,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "error.unexpected": (
             "An unexpected error occurred. Run with --verbose for more details."
         ),
+        "language_selector.prompt": "Select your language",
     },
     "es": {
         "error.unsupported_file": (
@@ -64,6 +68,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "error.unexpected": (
             "Ocurrió un error inesperado. Ejecuta con --verbose para más detalles."
         ),
+        "language_selector.prompt": "Selecciona tu idioma",
     },
 }
 

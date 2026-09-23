@@ -11,7 +11,7 @@ from markwright.core.exceptions import (
     OutputWriteError,
     UnsupportedFileError,
 )
-from markwright.i18n import DEFAULT_LANGUAGE, t
+from markwright.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, t
 
 EXIT_SUCCESS = 0
 EXIT_UNSUPPORTED_FILE = 1
@@ -38,7 +38,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Destination path for the generated Markdown file.",
     )
     parser.add_argument(
-        "--lang", choices=["en", "es"], default=DEFAULT_LANGUAGE, help="Interface language."
+        "--lang", choices=list(SUPPORTED_LANGUAGES), default=DEFAULT_LANGUAGE,
+        help="Interface language."
     )
     parser.add_argument(
         "--password", default=None,

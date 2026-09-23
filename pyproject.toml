@@ -1,0 +1,36 @@
+[project]
+name = "markwright"
+version = "0.1.0"
+description = "Local, privacy-first PDF to Markdown converter with dual CLI/GUI and bilingual interface."
+authors = [
+    { name = "IsabBosDev", email = "isabosdev@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "docling>=2.130.0",
+    "pypdf>=6.19.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.10.11,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.8",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: slow tests that run a real docling conversion (excluded by default)",
+]
+addopts = "-m 'not integration'"

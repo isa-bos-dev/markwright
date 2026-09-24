@@ -1078,6 +1078,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "docling" },
+    { name = "docling-core" },
     { name = "easyocr" },
     { name = "pypdf" },
     { name = "sv-ttk" },
@@ -1085,6 +1086,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pillow" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
@@ -1093,6 +1095,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "docling", specifier = ">=2.130.0" },
+    { name = "docling-core", specifier = ">=2.98.0" },
     { name = "easyocr", specifier = ">=1.7.2" },
     { name = "pypdf", specifier = ">=6.19.0" },
     { name = "sv-ttk", specifier = ">=2.6.1" },
@@ -1100,6 +1103,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "pillow", specifier = ">=12.3.0" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "ruff", specifier = ">=0.16.8" },

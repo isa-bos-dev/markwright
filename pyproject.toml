@@ -9,10 +9,18 @@ license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.12"
 dependencies = [
+    # Conversion engine: PDF layout, tables, headings and images.
     "docling>=2.130.0",
+    # Imported directly (document model and image-reference mode); pinned so a
+    # docling upgrade cannot silently drop it.
     "docling-core>=2.98.0",
+    # OCR engine. Declared explicitly because `docling` does not install it (only its
+    # `easyocr` extra does) and it is forced over docling's default, RapidOCR, whose
+    # models are hosted on ModelScope instead of GitHub.
     "easyocr>=1.7.2",
+    # Decrypts password-protected PDFs in memory: docling has no password support.
     "pypdf>=6.19.0",
+    # Visual theme of the GUI.
     "sv-ttk>=2.6.1",
 ]
 
@@ -25,6 +33,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    # Used by the tests and by scripts/generate_assets.py to read and build the logo images.
     "pillow>=12.3.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",

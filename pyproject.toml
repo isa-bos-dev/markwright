@@ -45,7 +45,28 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
+# C90 complexity, PLC0415 imports outside the file header, ARG unused arguments,
+# S security checks. (ANN, missing type hints, joins with the typing work: QUA-T009.)
+select = ["E", "F", "I", "UP", "B", "SIM", "C90", "PLC0415", "ARG", "S"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+# Every exception below states why it exists; nothing is silenced with a bare `# noqa`.
+[tool.ruff.lint.per-file-ignores]
+# docling loads PyTorch (~5 s): it is imported on the first conversion so that the GUI
+# window and `--help` stay instant.
+"src/markwright/core/converter.py" = ["PLC0415"]
+"src/markwright/core/pdf_source.py" = ["PLC0415"]
+# Each mode is imported only when used (the CLI never loads tkinter), and a missing
+# tkinter has to be caught at that import.
+"src/markwright/main.py" = ["PLC0415"]
+# Opening the folder runs `open`/`xdg-open`, found through PATH. Pending the security
+# review (SEC), which decides how to harden or replace it.
+"src/markwright/gui/main_screen.py" = ["S603", "S606", "S607"]
+# Test code: `assert` is the assertion; fakes must mirror the signature of what they
+# replace; the sample passwords and "/tmp" paths are not secrets or real files.
+"tests/**" = ["S", "ARG", "PLC0415"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

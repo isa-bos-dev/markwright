@@ -18,7 +18,7 @@ from markwright.i18n.errors import ERROR_MESSAGE_KEYS
 _POLL_INTERVAL_MS = 100
 _MESSAGE_WIDTH_PX = 480
 _CONTENT_COLUMN_MIN_WIDTH_PX = 370
-_PASSWORD_MASK = "•"
+_MASK_CHARACTER = "•"
 
 _log = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class MainScreen(ttk.Frame):
         self.file_label.grid(row=1, column=1, sticky="w", padx=(16, 0))
 
         self.password_label = ttk.Label(self, text=self._t("main.password"))
-        self.password_entry = ttk.Entry(self, textvariable=self._password, show=_PASSWORD_MASK)
+        self.password_entry = ttk.Entry(self, textvariable=self._password, show=_MASK_CHARACTER)
         self.password_entry.bind("<Return>", lambda _event: self._start_conversion())
         self.password_label.grid(row=2, column=0, sticky="w", pady=(16, 0))
         self.password_entry.grid(row=2, column=1, sticky="ew", padx=(16, 0), pady=(16, 0))

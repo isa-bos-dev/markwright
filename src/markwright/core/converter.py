@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import shutil
 import warnings
@@ -5,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from markwright.core.exceptions import (
     CorruptFileError,
@@ -15,6 +18,11 @@ from markwright.core.exceptions import (
 from markwright.core.models import find_models_dir
 from markwright.core.paths import OutputPaths, resolve_output_paths
 from markwright.core.pdf_source import prepare_docling_source
+
+if TYPE_CHECKING:
+    # Type-only: importing docling at runtime costs ~5 s (it loads PyTorch).
+    from docling.datamodel.base_models import DocumentStream
+    from docling.datamodel.document import ConversionResult
 
 # Categories considered likely environmental/transient (worth retrying).
 # Anything else (content-specific failures, or unknown) is treated as not
@@ -58,27 +66,46 @@ def convert_pdf_to_md(
     so the caller can decide whether to inform the user or offer a retry —
     this function never asks anything itself.
     """
-
-    def report(stage: ConversionStage, warning: ConversionWarning | None = None) -> None:
-        if on_progress is not None:
-            on_progress(stage, warning)
-
     input_path = Path(input_path)
-    if output_path is not None:
-        output_path = Path(output_path)
+    _require_pdf(input_path)
+    _notify(on_progress, ConversionStage.STARTED)
 
-    if not input_path.is_file():
-        raise UnsupportedFileError(input_path)
-    if input_path.suffix.lower() != ".pdf":
-        raise UnsupportedFileError(input_path)
-
-    report(ConversionStage.STARTED)
-
-    output_paths = resolve_output_paths(input_path, output_path)
+    output_paths = resolve_output_paths(
+        input_path, Path(output_path) if output_path is not None else None
+    )
     models_dir = _prepare_runtime()
+    source = _load_source(input_path, password)
 
+    _notify(on_progress, ConversionStage.CONVERTING)
+    result = _convert(source, models_dir, input_path)
+    if _is_partial_success(result):
+        _notify(on_progress, ConversionStage.PARTIAL_SUCCESS, _classify_partial_success(result))
+
+    _notify(on_progress, ConversionStage.WRITING)
+    _write_markdown(result.document, output_paths)
+
+    _notify(on_progress, ConversionStage.DONE)
+    return output_paths.markdown_path
+
+
+def _notify(
+    on_progress: OnProgress | None,
+    stage: ConversionStage,
+    warning: ConversionWarning | None = None,
+) -> None:
+    if on_progress is not None:
+        on_progress(stage, warning)
+
+
+def _require_pdf(input_path: Path) -> None:
+    if not input_path.is_file() or input_path.suffix.lower() != ".pdf":
+        raise UnsupportedFileError(input_path)
+
+
+def _load_source(input_path: Path, password: str | None) -> Path | DocumentStream:
+    """Prepare what docling will read, mapping every failure to a domain error."""
     try:
-        source = prepare_docling_source(input_path, password)
+        return prepare_docling_source(input_path, password)
     except InvalidPasswordError:
         raise
     except FileNotFoundError as exc:
@@ -86,21 +113,15 @@ def convert_pdf_to_md(
     except Exception as exc:
         raise CorruptFileError(input_path) from exc
 
-    report(ConversionStage.CONVERTING)
 
+def _convert(
+    source: Path | DocumentStream, models_dir: Path | None, input_path: Path
+) -> ConversionResult:
+    """Run docling on the prepared source, mapping any failure to a domain error."""
     try:
-        result = _build_converter(models_dir).convert(source, raises_on_error=True)
+        return _build_converter(models_dir).convert(source, raises_on_error=True)
     except Exception as exc:
         raise CorruptFileError(input_path) from exc
-
-    if _is_partial_success(result):
-        report(ConversionStage.PARTIAL_SUCCESS, _classify_partial_success(result))
-
-    report(ConversionStage.WRITING)
-    _write_markdown(result.document, output_paths)
-
-    report(ConversionStage.DONE)
-    return output_paths.markdown_path
 
 
 def _prepare_runtime() -> Path | None:

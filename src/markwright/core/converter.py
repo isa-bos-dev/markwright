@@ -23,6 +23,8 @@ if TYPE_CHECKING:
     # Type-only: importing docling at runtime costs ~5 s (it loads PyTorch).
     from docling.datamodel.base_models import DocumentStream
     from docling.datamodel.document import ConversionResult
+    from docling.document_converter import DocumentConverter
+    from docling_core.types.doc.document import DoclingDocument
 
 # Categories considered likely environmental/transient (worth retrying).
 # Anything else (content-specific failures, or unknown) is treated as not
@@ -144,7 +146,7 @@ def _prepare_runtime() -> Path | None:
     return models_dir
 
 
-def _build_converter(models_dir: Path | None):
+def _build_converter(models_dir: Path | None) -> DocumentConverter:
     """Create the docling converter configured for Markwright.
 
     docling pulls in PyTorch, which takes ~5 s to import. Importing it here, on
@@ -166,13 +168,13 @@ def _build_converter(models_dir: Path | None):
     )
 
 
-def _is_partial_success(result) -> bool:
+def _is_partial_success(result: ConversionResult) -> bool:
     from docling.datamodel.base_models import ConversionStatus
 
     return result.status == ConversionStatus.PARTIAL_SUCCESS
 
 
-def _write_markdown(document, output_paths: OutputPaths) -> None:
+def _write_markdown(document: DoclingDocument, output_paths: OutputPaths) -> None:
     from docling_core.types.doc.base import ImageRefMode
 
     has_pictures = bool(document.pictures)
@@ -203,7 +205,7 @@ def _cleanup_partial_output(output_paths: OutputPaths) -> None:
         pass
 
 
-def _classify_partial_success(result) -> ConversionWarning:
+def _classify_partial_success(result: ConversionResult) -> ConversionWarning:
     categories = tuple(sorted({err.category.value for err in result.errors}))
     pages = tuple(
         sorted({err.page_no for err in result.errors if err.page_no is not None})

@@ -47,8 +47,8 @@ target-version = "py312"
 
 [tool.ruff.lint]
 # C90 complexity, PLC0415 imports outside the file header, ARG unused arguments,
-# S security checks. (ANN, missing type hints, joins with the typing work: QUA-T009.)
-select = ["E", "F", "I", "UP", "B", "SIM", "C90", "PLC0415", "ARG", "S"]
+# S security checks, ANN missing type hints.
+select = ["E", "F", "I", "UP", "B", "SIM", "C90", "PLC0415", "ARG", "S", "ANN"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
@@ -66,8 +66,33 @@ max-complexity = 10
 # review (SEC), which decides how to harden or replace it.
 "src/markwright/gui/main_screen.py" = ["S603", "S606", "S607"]
 # Test code: `assert` is the assertion; fakes must mirror the signature of what they
-# replace; the sample passwords and "/tmp" paths are not secrets or real files.
-"tests/**" = ["S", "ARG", "PLC0415"]
+# replace; the sample passwords and "/tmp" paths are not secrets or real files. Type hints
+# are required in the application code, not in tests or helper scripts.
+"tests/**" = ["S", "ARG", "PLC0415", "ANN"]
+"scripts/**" = ["ANN"]
+
+[tool.mypy]
+files = ["src/markwright"]
+python_version = "3.12"
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+# The core is checked strictly. mypy only accepts `strict` globally, so the flags it
+# switches on are listed here for `markwright.core` alone.
+[[tool.mypy.overrides]]
+module = "markwright.core.*"
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+extra_checks = true
+no_implicit_reexport = true
+strict_equality = true
+warn_return_any = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

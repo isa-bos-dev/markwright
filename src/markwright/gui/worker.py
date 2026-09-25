@@ -41,14 +41,17 @@ class ConversionJob:
     def start(self) -> None:
         self._thread.start()
 
+    def _report_progress(
+        self, stage: ConversionStage, warning: ConversionWarning | None = None
+    ) -> None:
+        self.events.put(ProgressEvent(stage, warning))
+
     def _run(self) -> None:
         try:
             output_path = convert_pdf_to_md(
                 self._input_path,
                 password=self._password,
-                on_progress=lambda stage, warning=None: self.events.put(
-                    ProgressEvent(stage, warning)
-                ),
+                on_progress=self._report_progress,
             )
         except Exception as error:  # noqa: BLE001 - anything that fails must reach the UI
             self.events.put(FailedEvent(error))

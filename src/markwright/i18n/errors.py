@@ -1,5 +1,4 @@
 from markwright.core.exceptions import (
-    ConversionError,
     CorruptFileError,
     InvalidPasswordError,
     OutputWriteError,
@@ -7,7 +6,8 @@ from markwright.core.exceptions import (
 )
 
 # Shared by the CLI and the GUI so both describe each domain error the same way.
-ERROR_MESSAGE_KEYS: dict[type[ConversionError], str] = {
+# Keyed by ``type[Exception]`` because both adapters look it up with whatever they caught.
+ERROR_MESSAGE_KEYS: dict[type[Exception], str] = {
     UnsupportedFileError: "error.unsupported_file",
     InvalidPasswordError: "error.invalid_password",
     CorruptFileError: "error.corrupt_file",

@@ -264,6 +264,22 @@ def test_pipeline_uses_easyocr_and_generates_picture_images(
     assert options.generate_picture_images is True
 
 
+def test_a_document_timeout_is_set_so_a_hostile_pdf_cannot_hang_forever(
+    plain_pdf_factory: Callable[..., Path],
+    conversion_result_factory: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """SEC-TH-002: bounded, not unlimited — docling reports it as a retryable
+    "timeout" partial success (see test_partial_success_with_transient_categories_
+    is_marked_retryable below), so no separate error handling is needed here."""
+    options = _run_and_capture_pipeline_options(
+        monkeypatch, plain_pdf_factory(), conversion_result_factory()
+    )
+
+    assert options.document_timeout is not None
+    assert options.document_timeout > 0
+
+
 def test_a_local_models_folder_is_used_and_keeps_the_conversion_offline(
     plain_pdf_factory: Callable[..., Path],
     conversion_result_factory: Callable[..., SimpleNamespace],

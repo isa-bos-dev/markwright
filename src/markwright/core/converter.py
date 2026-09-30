@@ -31,6 +31,14 @@ if TYPE_CHECKING:
 # confidently retryable, to avoid promising a retry will help when it won't.
 _TRANSIENT_FAILURE_CATEGORIES = frozenset({"timeout", "capacity", "source_unavailable", "internal"})
 
+# A hostile or pathologically large PDF must not hang the app forever
+# (SEC-TH-002): docling checks this between pages and reports the pages it
+# never got to with category "timeout" — already in _TRANSIENT_FAILURE_CATEGORIES
+# above, so it surfaces through the existing "you may want to try again" message
+# with no separate handling needed. Generous enough for a large real document
+# with OCR; still a finite bound instead of no limit at all.
+_DOCUMENT_TIMEOUT_SECONDS = 600.0
+
 
 class ConversionStage(StrEnum):
     STARTED = "started"
@@ -162,6 +170,7 @@ def _build_converter(models_dir: Path | None) -> DocumentConverter:
 
     pipeline_options = PdfPipelineOptions()
     pipeline_options.generate_picture_images = True
+    pipeline_options.document_timeout = _DOCUMENT_TIMEOUT_SECONDS
     # Force EasyOCR explicitly: docling's "auto" OCR mode may otherwise pick
     # RapidOCR, whose models are hosted on ModelScope rather than GitHub.
     pipeline_options.ocr_options = EasyOcrOptions()

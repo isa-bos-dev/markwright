@@ -22,6 +22,9 @@ dependencies = [
     "pypdf>=6.19.0",
     # Visual theme of the GUI.
     "sv-ttk>=2.6.1",
+    # Interactive terminal menu (`markwright menu`). Already installed transitively
+    # via docling; declared because it is now imported directly.
+    "rich>=15.0.0",
 ]
 
 [project.scripts]

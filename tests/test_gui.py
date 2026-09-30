@@ -293,6 +293,26 @@ def test_an_unexpected_error_shows_a_generic_message_and_unlocks_the_controls(
     assert not _is_shown(main_screen.open_folder_button)
 
 
+def test_an_unexpected_error_never_leaks_its_technical_detail_however_sensitive(
+    main_screen: MainScreen,
+    tk_root: tk.Tk,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """SEC-TH-003: whatever the underlying exception says, only the generic message shows."""
+    sensitive = RuntimeError(r"failed at C:\Users\dev\.venv\Lib\site-packages\torch\_ops.py:42")
+    fakes.install(monkeypatch, fakes.raising(lambda _: sensitive))
+    _choose_pdf(main_screen, monkeypatch, tmp_path / "report.pdf")
+
+    main_screen.convert_button.invoke()
+    _pump(tk_root, lambda: main_screen.status_label.cget("text") != "")
+
+    shown = main_screen.status_label.cget("text")
+    assert shown == t("error.unexpected_gui", "en")
+    assert "site-packages" not in shown
+    assert "dev" not in shown
+
+
 def test_controls_stay_locked_across_several_polls_and_unlock_afterwards(
     main_screen: MainScreen,
     tk_root: tk.Tk,

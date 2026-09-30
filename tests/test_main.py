@@ -135,6 +135,23 @@ def test_a_gui_that_cannot_start_reports_it_clearly_and_points_to_the_cli(
     assert "Traceback" not in error_output
 
 
+def test_only_the_first_line_of_a_multiline_gui_failure_is_shown(
+    gui_run: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """SEC-TH-003: a verbose underlying error must not leak its later lines (a path, a stack)."""
+    gui_run.side_effect = tk.TclError(
+        r"no display name and no $DISPLAY environment variable"
+        "\nsite-packages path: C:\\Users\\dev\\.venv\\Lib\\site-packages\\tkinter\\__init__.py"
+    )
+
+    main([])
+
+    error_output = capsys.readouterr().err
+    assert "no display name" in error_output
+    assert "site-packages" not in error_output
+    assert "Traceback" not in error_output
+
+
 def test_a_missing_tkinter_is_reported_the_same_way(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

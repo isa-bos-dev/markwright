@@ -46,9 +46,27 @@ def print_progress(
         print(t(f"progress.{stage.value}", lang))
 
 
+_EPILOG = """\
+Examples:
+  markwright report.pdf                 Convert report.pdf to report.md
+  markwright report.pdf -o out.md       Choose the output filename
+  markwright report.pdf --lang es       Progress messages in Spanish
+  markwright secret.pdf --password ***  Decrypt a protected PDF
+  markwright                            Open the graphical interface
+  markwright menu                       Pick a PDF from the current folder, interactively
+"""
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="markwright", description="Convert a PDF file to Markdown."
+        prog="markwright",
+        description=(
+            "Convert a PDF file to Markdown. Run with no arguments to open the\n"
+            "graphical interface instead, or `markwright menu` for an interactive\n"
+            "terminal menu that picks a PDF without typing its full path."
+        ),
+        epilog=_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "--version",

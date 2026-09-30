@@ -73,6 +73,34 @@ def test_version_flag_wins_over_a_missing_input_path(
     mock_convert.assert_not_called()
 
 
+# --- Help ---
+
+
+def test_help_exits_zero_and_mentions_the_gui_and_the_menu(
+    mock_convert: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        run(["--help"])
+
+    help_text = capsys.readouterr().out
+    assert exc_info.value.code == 0
+    assert "graphical interface" in help_text
+    assert "markwright menu" in help_text
+    mock_convert.assert_not_called()
+
+
+def test_help_shows_a_real_usage_example_for_every_flag(
+    mock_convert: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit):
+        run(["--help"])
+
+    help_text = capsys.readouterr().out
+    assert "markwright report.pdf -o out.md" in help_text
+    assert "markwright report.pdf --lang es" in help_text
+    assert "markwright secret.pdf --password" in help_text
+
+
 # --- Success cases ---
 
 

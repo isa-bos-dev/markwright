@@ -154,9 +154,7 @@ def test_missing_destination_directory_raises(tmp_path: Path) -> None:
         resolve_output_paths(input_path, missing_dir_output)
 
 
-def test_collision_limit_exceeded_raises(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_collision_limit_exceeded_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import markwright.core.paths as paths_module
 
     monkeypatch.setattr(paths_module, "MAX_COLLISION_ATTEMPTS", 2)

@@ -70,9 +70,7 @@ def test_corrupt_file_error_stores_path() -> None:
         (OutputWriteError, Path("output.md")),
     ],
 )
-def test_debug_message_includes_the_path(
-    exc_type: type[ConversionError], path: Path
-) -> None:
+def test_debug_message_includes_the_path(exc_type: type[ConversionError], path: Path) -> None:
     exc = exc_type(path)
 
     assert str(path) in str(exc)

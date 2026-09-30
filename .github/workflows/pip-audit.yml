@@ -1,0 +1,27 @@
+name: pip-audit
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 4 * * 1" # Mondays, off-peak
+
+jobs:
+  audit:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      # Informative, not a required check yet (see docs/specs/008-ci-cd):
+      # torch/transformers pull in a large dependency tree outside our control,
+      # and a permanently-red required check trains people to ignore it.
+      - name: Audit installed dependencies for known vulnerabilities
+        continue-on-error: true
+        run: uv run --with pip-audit pip-audit

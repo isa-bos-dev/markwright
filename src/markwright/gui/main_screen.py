@@ -4,6 +4,7 @@ import queue
 import subprocess
 import sys
 import tkinter as tk
+from collections.abc import Callable
 from pathlib import Path
 from tkinter import filedialog, ttk
 
@@ -11,6 +12,7 @@ from markwright import APP_NAME
 from markwright.core.converter import ConversionStage
 from markwright.core.exceptions import InvalidPasswordError
 from markwright.gui.assets import load_image
+from markwright.gui.tooltip import Tooltip
 from markwright.gui.worker import ConversionJob, DoneEvent, Event, FailedEvent, ProgressEvent
 from markwright.i18n import t
 from markwright.i18n.errors import ERROR_MESSAGE_KEYS
@@ -19,6 +21,7 @@ _POLL_INTERVAL_MS = 100
 _MESSAGE_WIDTH_PX = 480
 _CONTENT_COLUMN_MIN_WIDTH_PX = 370
 _MASK_CHARACTER = "•"
+_GEAR_ICON = "⚙"
 
 _log = logging.getLogger(__name__)
 
@@ -26,9 +29,15 @@ _log = logging.getLogger(__name__)
 class MainScreen(ttk.Frame):
     """Choose a PDF, convert it without freezing the window, and show the result."""
 
-    def __init__(self, parent: tk.Misc, language: str) -> None:
+    def __init__(
+        self,
+        parent: tk.Misc,
+        language: str,
+        on_open_settings: Callable[[], None] | None = None,
+    ) -> None:
         super().__init__(parent, padding=(40, 32))
         self._language = language
+        self._on_open_settings = on_open_settings
         self._input_path: Path | None = None
         self._output_path: Path | None = None
         self._job: ConversionJob | None = None
@@ -42,15 +51,22 @@ class MainScreen(ttk.Frame):
 
     def _build(self) -> None:
         header = ttk.Frame(self)
-        header.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 24))
+        header.grid(row=0, column=0, sticky="w", pady=(0, 24))
         self._logo = load_image("logo-56.png", self)
         ttk.Label(header, image=self._logo).grid(row=0, column=0, rowspan=2)
         ttk.Label(header, text=APP_NAME, style="Title.TLabel").grid(
             row=0, column=1, sticky="sw", padx=(16, 0)
         )
-        ttk.Label(header, text=self._t("main.subtitle"), style="Subtitle.TLabel").grid(
-            row=1, column=1, sticky="nw", padx=(16, 0)
+        self._subtitle_label = ttk.Label(
+            header, text=self._t("main.subtitle"), style="Subtitle.TLabel"
         )
+        self._subtitle_label.grid(row=1, column=1, sticky="nw", padx=(16, 0))
+
+        self.settings_button = ttk.Button(
+            self, text=_GEAR_ICON, width=3, command=self._open_settings
+        )
+        self.settings_button.grid(row=0, column=1, sticky="ne", pady=(0, 24))
+        self._settings_tooltip = Tooltip(self.settings_button, self._t("settings.gear_tooltip"))
 
         self.choose_button = ttk.Button(
             self, text=self._t("main.choose_file"), command=self._choose_file
@@ -197,6 +213,28 @@ class MainScreen(ttk.Frame):
     def _open_folder(self) -> None:
         if self._output_path is not None:
             _open_in_file_manager(self._output_path.parent)
+
+    def _open_settings(self) -> None:
+        if self._on_open_settings is not None:
+            self._on_open_settings()
+
+    def refresh_language(self, language: str) -> None:
+        """Re-localize every static label after the interface language changes.
+
+        Any status/warning message already on screen stays as it was shown
+        (retranslating an in-flight conversion result is not worth the
+        complexity for this project's size) — only the labels set once at
+        build time are refreshed.
+        """
+        self._language = language
+        self._subtitle_label.configure(text=self._t("main.subtitle"))
+        self.choose_button.configure(text=self._t("main.choose_file"))
+        if self._input_path is None:
+            self.file_label.configure(text=self._t("main.no_file"))
+        self.password_label.configure(text=self._t("main.password"))
+        self.convert_button.configure(text=self._t("main.convert"))
+        self.open_folder_button.configure(text=self._t("main.open_folder"))
+        self._settings_tooltip.text = self._t("settings.gear_tooltip")
 
     def destroy(self) -> None:
         if self._poll_id is not None:

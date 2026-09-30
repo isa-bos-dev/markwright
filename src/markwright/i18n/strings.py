@@ -32,9 +32,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "correctly. This is likely due to the content of those pages, not "
             "a temporary issue."
         ),
-        "error.unexpected": (
-            "An unexpected error occurred. Run with --verbose for more details."
-        ),
+        "error.unexpected": ("An unexpected error occurred. Run with --verbose for more details."),
         "language_selector.prompt": "Select your language",
         "error.gui_unavailable": (
             "The graphical interface could not be started ({reason}). "
@@ -50,6 +48,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "main.convert": "Convert to Markdown",
         "main.saved_to": "Saved to: {path}",
         "main.open_folder": "Open folder",
+        "settings.gear_tooltip": "Settings",
+        "settings.title": "Settings",
+        "settings.language": "Language",
+        "settings.theme": "Theme",
+        "settings.theme.light": "Light",
+        "settings.theme.dark": "Dark",
+        "settings.font_size": "Font size",
+        "settings.font_size.small": "Small",
+        "settings.font_size.normal": "Normal",
+        "settings.font_size.large": "Large",
     },
     "es": {
         "error.unsupported_file": (
@@ -59,9 +67,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "Este PDF está protegido con contraseña: {path}. "
             "Introduce la contraseña correcta para continuar."
         ),
-        "error.corrupt_file": (
-            "Este archivo parece estar dañado o no se pudo procesar: {path}"
-        ),
+        "error.corrupt_file": ("Este archivo parece estar dañado o no se pudo procesar: {path}"),
         "error.output_write_failed": (
             "No se pudo guardar el resultado en: {path}. Comprueba que la carpeta "
             "de destino existe y que tienes permiso para escribir en ella."
@@ -97,6 +103,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "main.convert": "Convertir a Markdown",
         "main.saved_to": "Guardado en: {path}",
         "main.open_folder": "Abrir carpeta",
+        "settings.gear_tooltip": "Ajustes",
+        "settings.title": "Ajustes",
+        "settings.language": "Idioma",
+        "settings.theme": "Tema",
+        "settings.theme.light": "Claro",
+        "settings.theme.dark": "Oscuro",
+        "settings.font_size": "Tamaño de letra",
+        "settings.font_size.small": "Pequeño",
+        "settings.font_size.normal": "Normal",
+        "settings.font_size.large": "Grande",
     },
 }
 

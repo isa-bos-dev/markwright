@@ -19,7 +19,10 @@ from markwright.gui.assets import load_image
 from markwright.gui.gui import App
 from markwright.gui.language_screen import LanguageScreen, build_language_prompt
 from markwright.gui.main_screen import MainScreen, _open_in_file_manager
+from markwright.gui.settings import Settings
+from markwright.gui.settings_dialog import SettingsDialog
 from markwright.gui.theme import apply_theme
+from markwright.gui.tooltip import Tooltip
 from markwright.i18n import SUPPORTED_LANGUAGES, t
 
 _WAIT_TIMEOUT_SECONDS = 5
@@ -435,7 +438,160 @@ def test_on_other_platforms_the_folder_is_opened_with_the_system_command(
     calls: list[list[str]] = []
     monkeypatch.setattr(sys, "platform", platform)
     monkeypatch.setattr(subprocess, "run", lambda args, **kwargs: calls.append(args))
-
     _open_in_file_manager(tmp_path)
 
     assert calls == [[command, str(tmp_path)]]
+
+
+# --- Tooltip ---
+
+
+def test_hovering_shows_a_popup_with_the_text(tk_root: tk.Tk) -> None:
+    button = ttk.Button(tk_root, text="?")
+    button.pack()
+    tooltip = Tooltip(button, "Hello")
+
+    tooltip._show()
+
+    assert tooltip._popup is not None
+    assert tooltip._popup.winfo_children()[0].cget("text") == "Hello"
+
+    tooltip._hide()
+    button.destroy()
+    _release_tk_garbage()
+
+
+def test_leaving_hides_the_popup(tk_root: tk.Tk) -> None:
+    button = ttk.Button(tk_root, text="?")
+    button.pack()
+    tooltip = Tooltip(button, "Hello")
+    tooltip._show()
+
+    tooltip._hide()
+
+    assert tooltip._popup is None
+    button.destroy()
+    _release_tk_garbage()
+
+
+def test_showing_twice_does_not_create_a_second_popup(tk_root: tk.Tk) -> None:
+    button = ttk.Button(tk_root, text="?")
+    button.pack()
+    tooltip = Tooltip(button, "Hello")
+
+    tooltip._show()
+    first_popup = tooltip._popup
+    tooltip._show()
+
+    assert tooltip._popup is first_popup
+
+    tooltip._hide()
+    button.destroy()
+    _release_tk_garbage()
+
+
+def test_hiding_without_having_shown_is_a_no_op(tk_root: tk.Tk) -> None:
+    button = ttk.Button(tk_root, text="?")
+    button.pack()
+    tooltip = Tooltip(button, "Hello")
+
+    tooltip._hide()  # must not raise
+
+    button.destroy()
+    _release_tk_garbage()
+
+
+# --- Settings ---
+
+
+def test_the_gear_button_opens_settings(tk_root: tk.Tk) -> None:
+    opened = []
+    screen = MainScreen(tk_root, "en", on_open_settings=lambda: opened.append(1))
+
+    screen.settings_button.invoke()
+
+    screen.destroy()
+    _release_tk_garbage()
+    assert opened == [1]
+
+
+def test_the_gear_button_does_nothing_without_a_settings_callback(main_screen: MainScreen) -> None:
+    main_screen.settings_button.invoke()  # must not raise
+
+
+def test_refresh_language_relocalizes_the_static_labels(main_screen: MainScreen) -> None:
+    main_screen.refresh_language("es")
+
+    assert main_screen.convert_button.cget("text") == t("main.convert", "es")
+    assert main_screen.file_label.cget("text") == t("main.no_file", "es")
+    assert main_screen._settings_tooltip.text == t("settings.gear_tooltip", "es")
+
+
+def test_refresh_language_keeps_an_already_chosen_file_name(
+    main_screen: MainScreen, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _choose_pdf(main_screen, monkeypatch, tmp_path / "report.pdf")
+
+    main_screen.refresh_language("es")
+
+    assert main_screen.file_label.cget("text") == "report.pdf"
+
+
+@pytest.fixture
+def settings_dialog(tk_root: tk.Tk) -> Iterator[tuple[SettingsDialog, list[Settings]]]:
+    changes: list[Settings] = []
+    dialog = SettingsDialog(tk_root, Settings(), on_change=changes.append)
+    yield dialog, changes
+    dialog.destroy()
+    _release_tk_garbage()
+
+
+def test_picking_a_language_reports_the_updated_settings(
+    settings_dialog: tuple[SettingsDialog, list[Settings]],
+) -> None:
+    dialog, changes = settings_dialog
+
+    dialog.language_buttons["es"].invoke()
+
+    assert changes == [Settings(language="es")]
+
+
+def test_picking_a_theme_reports_the_updated_settings(
+    settings_dialog: tuple[SettingsDialog, list[Settings]],
+) -> None:
+    dialog, changes = settings_dialog
+
+    dialog.theme_buttons["dark"].invoke()
+
+    assert changes == [Settings(theme="dark")]
+
+
+def test_picking_a_font_size_reports_the_updated_settings(
+    settings_dialog: tuple[SettingsDialog, list[Settings]],
+) -> None:
+    dialog, changes = settings_dialog
+
+    dialog.font_size_buttons["large"].invoke()
+
+    assert changes == [Settings(font_size="large")]
+
+
+def test_choices_accumulate_onto_the_same_settings_object(
+    settings_dialog: tuple[SettingsDialog, list[Settings]],
+) -> None:
+    dialog, changes = settings_dialog
+
+    dialog.theme_buttons["dark"].invoke()
+    dialog.font_size_buttons["small"].invoke()
+
+    assert changes[-1] == Settings(theme="dark", font_size="small")
+
+
+def test_the_dialog_title_and_labels_use_the_initial_settings_language(tk_root: tk.Tk) -> None:
+    dialog = SettingsDialog(tk_root, Settings(language="es"), on_change=lambda _s: None)
+
+    assert dialog.title() == t("settings.title", "es")
+    assert dialog.theme_buttons["dark"].cget("text") == t("settings.theme.dark", "es")
+
+    dialog.destroy()
+    _release_tk_garbage()

@@ -65,8 +65,11 @@ max-complexity = 10
 # Each mode is imported only when used (the CLI never loads tkinter), and a missing
 # tkinter has to be caught at that import.
 "src/markwright/main.py" = ["PLC0415"]
-# Opening the folder runs `open`/`xdg-open`, found through PATH. Pending the security
-# review (SEC), which decides how to harden or replace it.
+# Opening the folder runs `open`/`xdg-open`/`os.startfile`, found through PATH.
+# Reviewed in SEC (005-security-hardening): the target is `resolve_output_paths(...)`,
+# computed entirely by Markwright from the input path the user already chose via a
+# trusted dialog/CLI/menu — never from the PDF's own content. False positives of
+# static analysis, not a real finding.
 "src/markwright/gui/main_screen.py" = ["S603", "S606", "S607"]
 # Test code: `assert` is the assertion; fakes must mirror the signature of what they
 # replace; the sample passwords and "/tmp" paths are not secrets or real files. Type hints

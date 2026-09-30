@@ -61,7 +61,17 @@ STRINGS: dict[str, dict[str, str]] = {
         "menu.no_pdfs_found": "No PDF files found in this folder.",
         "menu.choose_prompt": "Enter a number, or type a path to another PDF",
         "menu.type_path_prompt": "Enter the path to a PDF file",
-        "menu.convert_another": "Convert another file?",
+        "menu.option_convert": "Convert a PDF",
+        "menu.option_help": "Help",
+        "menu.option_language": "Switch language ({language})",
+        "menu.option_quit": "Quit",
+        "menu.prompt_choice": "Choose an option",
+        "menu.help_text": (
+            "Markwright converts a PDF to Markdown, preserving tables, headings, "
+            "lists and images. For scripting, run `markwright <file.pdf>` "
+            "directly from a terminal instead — see `markwright --help` for "
+            "every option."
+        ),
     },
     "es": {
         "error.unsupported_file": (
@@ -120,7 +130,17 @@ STRINGS: dict[str, dict[str, str]] = {
         "menu.no_pdfs_found": "No se encontró ningún PDF en esta carpeta.",
         "menu.choose_prompt": "Escribe un número, o la ruta a otro PDF",
         "menu.type_path_prompt": "Escribe la ruta de un archivo PDF",
-        "menu.convert_another": "¿Convertir otro archivo?",
+        "menu.option_convert": "Convertir un PDF",
+        "menu.option_help": "Ayuda",
+        "menu.option_language": "Cambiar idioma ({language})",
+        "menu.option_quit": "Salir",
+        "menu.prompt_choice": "Elige una opción",
+        "menu.help_text": (
+            "Markwright convierte un PDF a Markdown, conservando tablas, "
+            "encabezados, listas e imágenes. Para scripts, ejecuta "
+            "`markwright <archivo.pdf>` directamente desde una terminal — "
+            "consulta `markwright --help` para ver todas las opciones."
+        ),
     },
 }
 

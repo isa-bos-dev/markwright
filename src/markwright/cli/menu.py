@@ -2,10 +2,10 @@ import argparse
 from collections.abc import Sequence
 from pathlib import Path
 
+import pyfiglet
 from rich.console import Console
 from rich.markup import escape
-from rich.panel import Panel
-from rich.prompt import Confirm, Prompt
+from rich.prompt import Prompt
 
 from markwright import APP_NAME
 from markwright.cli.cli import (
@@ -57,7 +57,13 @@ def resolve_choice(raw: str, pdfs: list[Path]) -> Path:
 
 
 def _parse_lang(argv: Sequence[str] | None) -> str:
-    parser = argparse.ArgumentParser(prog="markwright menu")
+    parser = argparse.ArgumentParser(
+        prog="markwright menu",
+        description=(
+            "Pick a PDF from the current folder's numbered list (or type a path) "
+            "and convert it, without typing the full path yourself."
+        ),
+    )
     parser.add_argument(
         "--lang",
         choices=list(SUPPORTED_LANGUAGES),
@@ -67,8 +73,31 @@ def _parse_lang(argv: Sequence[str] | None) -> str:
     return str(parser.parse_args(argv).lang)
 
 
+_BANNER_COLOR = "#4A90E2"  # the brand blue used across the logo, README badges and GUI.
+
+_MENU_CONVERT = "1"
+_MENU_HELP = "2"
+_MENU_LANGUAGE = "3"
+_MENU_QUIT = "4"
+_MENU_CHOICES = (_MENU_CONVERT, _MENU_HELP, _MENU_LANGUAGE, _MENU_QUIT)
+
+
 def _print_banner(console: Console, lang: str) -> None:
-    console.print(Panel(f"[bold]{APP_NAME}[/bold]\n{t('main.subtitle', lang)}", expand=False))
+    art = pyfiglet.figlet_format(APP_NAME, font="small")
+    console.print(f"[bold {_BANNER_COLOR}]{art}[/bold {_BANNER_COLOR}]", end="")
+    console.print(t("main.subtitle", lang), style="dim")
+
+
+def _print_main_menu(console: Console, lang: str) -> None:
+    other_language = next(code for code in SUPPORTED_LANGUAGES if code != lang)
+    console.print()
+    console.print(f"  [bold]{_MENU_CONVERT}.[/bold] {t('menu.option_convert', lang)}")
+    console.print(f"  [bold]{_MENU_HELP}.[/bold] {t('menu.option_help', lang)}")
+    console.print(
+        f"  [bold]{_MENU_LANGUAGE}.[/bold] "
+        f"{t('menu.option_language', lang, language=SUPPORTED_LANGUAGES[other_language])}"
+    )
+    console.print(f"  [bold]{_MENU_QUIT}.[/bold] {t('menu.option_quit', lang)}")
 
 
 def _convert_one(console: Console, lang: str, cwd: Path) -> int:
@@ -108,15 +137,25 @@ def _convert_one(console: Console, lang: str, cwd: Path) -> int:
 
 
 def run_menu(argv: Sequence[str] | None = None) -> int:
-    """Interactive loop: pick a PDF, convert it, offer to do another (TUI-FR-001)."""
+    """Interactive loop: a real menu (convert / help / language / quit), not a
+    single yes-or-no prompt (TUI-FR-001)."""
     lang = _parse_lang(argv)
     console = Console()
-    _print_banner(console, lang)
+    exit_code = EXIT_SUCCESS
     try:
         while True:
-            exit_code = _convert_one(console, lang, Path.cwd())
-            if not Confirm.ask(t("menu.convert_another", lang), default=False):
+            _print_banner(console, lang)
+            _print_main_menu(console, lang)
+            choice = Prompt.ask(t("menu.prompt_choice", lang), choices=list(_MENU_CHOICES))
+            if choice == _MENU_QUIT:
                 return exit_code
+            if choice == _MENU_HELP:
+                console.print()
+                console.print(t("menu.help_text", lang))
+            elif choice == _MENU_LANGUAGE:
+                lang = next(code for code in SUPPORTED_LANGUAGES if code != lang)
+            elif choice == _MENU_CONVERT:
+                exit_code = _convert_one(console, lang, Path.cwd())
     except KeyboardInterrupt:
         console.print()
         return EXIT_SUCCESS

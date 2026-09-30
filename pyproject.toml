@@ -25,6 +25,9 @@ dependencies = [
     # Interactive terminal menu (`markwright menu`). Already installed transitively
     # via docling; declared because it is now imported directly.
     "rich>=15.0.0",
+    # ASCII-art banner for the terminal menu. Pure Python, no transitive
+    # dependencies of its own — tiny next to docling/torch.
+    "pyfiglet>=1.0.4",
 ]
 
 [project.scripts]
@@ -41,6 +44,8 @@ dev = [
     "pillow>=12.3.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
+    # Builds the Windows .exe (REL, 009-release-1-0).
+    "pyinstaller>=6.22.3",
     "ruff>=0.16.8",
 ]
 

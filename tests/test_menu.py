@@ -5,8 +5,25 @@ import pytest
 
 import markwright.cli.menu as menu_module
 from markwright.cli.cli import EXIT_CORRUPT_FILE, EXIT_SUCCESS
-from markwright.cli.menu import find_pdfs, resolve_choice, run_menu, sanitize_for_terminal
+from markwright.cli.menu import (
+    _parse_lang,
+    find_pdfs,
+    resolve_choice,
+    run_menu,
+    sanitize_for_terminal,
+)
 from markwright.core.exceptions import CorruptFileError, InvalidPasswordError
+
+# --- --help ---
+
+
+def test_menu_help_describes_what_the_menu_does(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        _parse_lang(["--help"])
+
+    assert exc_info.value.code == 0
+    assert "without typing the full path" in capsys.readouterr().out
+
 
 # --- find_pdfs ---
 
@@ -112,10 +129,6 @@ def _answer_prompts(monkeypatch: pytest.MonkeyPatch, *answers: str) -> None:
     monkeypatch.setattr(menu_module.Prompt, "ask", MagicMock(side_effect=list(answers)))
 
 
-def _answer_confirms(monkeypatch: pytest.MonkeyPatch, *answers: bool) -> None:
-    monkeypatch.setattr(menu_module.Confirm, "ask", MagicMock(side_effect=list(answers)))
-
-
 def test_choosing_a_number_converts_that_pdf(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mock_convert: MagicMock
 ) -> None:
@@ -123,8 +136,7 @@ def test_choosing_a_number_converts_that_pdf(
     (tmp_path / "b.pdf").touch()
     monkeypatch.chdir(tmp_path)
     mock_convert.return_value = tmp_path / "b.md"
-    _answer_prompts(monkeypatch, "2")
-    _answer_confirms(monkeypatch, False)
+    _answer_prompts(monkeypatch, "1", "2", "4")  # convert -> pick #2 -> quit
 
     exit_code = run_menu([])
 
@@ -138,8 +150,7 @@ def test_no_pdfs_found_asks_for_a_typed_path(
     monkeypatch.chdir(tmp_path)
     typed_path = str(tmp_path / "typed.pdf")
     mock_convert.return_value = tmp_path / "typed.md"
-    _answer_prompts(monkeypatch, typed_path)
-    _answer_confirms(monkeypatch, False)
+    _answer_prompts(monkeypatch, "1", typed_path, "4")
 
     run_menu([])
 
@@ -153,8 +164,7 @@ def test_a_wrong_password_is_retried_until_correct(
     pdf.touch()
     monkeypatch.chdir(tmp_path)
     mock_convert.side_effect = [InvalidPasswordError(pdf), tmp_path / "secret.md"]
-    _answer_prompts(monkeypatch, "1", "hunter2")
-    _answer_confirms(monkeypatch, False)
+    _answer_prompts(monkeypatch, "1", "1", "hunter2", "4")
 
     exit_code = run_menu([])
 
@@ -163,7 +173,7 @@ def test_a_wrong_password_is_retried_until_correct(
     assert mock_convert.call_args.kwargs["password"] == "hunter2"
 
 
-def test_a_conversion_error_is_reported_like_the_cli_and_stops_the_loop(
+def test_a_conversion_error_is_reported_like_the_cli_then_returns_to_the_menu(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     mock_convert: MagicMock,
@@ -173,8 +183,7 @@ def test_a_conversion_error_is_reported_like_the_cli_and_stops_the_loop(
     pdf.touch()
     monkeypatch.chdir(tmp_path)
     mock_convert.side_effect = CorruptFileError(pdf)
-    _answer_prompts(monkeypatch, "1")
-    _answer_confirms(monkeypatch, False)
+    _answer_prompts(monkeypatch, "1", "1", "4")
 
     exit_code = run_menu([])
 
@@ -182,18 +191,59 @@ def test_a_conversion_error_is_reported_like_the_cli_and_stops_the_loop(
     assert "corrupted" in capsys.readouterr().err
 
 
-def test_answering_yes_converts_another_file(
+def test_choosing_convert_again_from_the_menu_converts_another_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mock_convert: MagicMock
 ) -> None:
     (tmp_path / "a.pdf").touch()
     monkeypatch.chdir(tmp_path)
     mock_convert.return_value = tmp_path / "a.md"
-    _answer_prompts(monkeypatch, "1", "1")
-    _answer_confirms(monkeypatch, True, False)
+    _answer_prompts(monkeypatch, "1", "1", "1", "1", "4")
 
     run_menu([])
 
     assert mock_convert.call_count == 2
+
+
+def test_choosing_quit_immediately_converts_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mock_convert: MagicMock
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    _answer_prompts(monkeypatch, "4")
+
+    exit_code = run_menu([])
+
+    assert exit_code == EXIT_SUCCESS
+    mock_convert.assert_not_called()
+
+
+def test_choosing_help_shows_help_text_and_returns_to_the_menu(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mock_convert: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    _answer_prompts(monkeypatch, "2", "4")  # help -> quit
+
+    exit_code = run_menu([])
+
+    assert exit_code == EXIT_SUCCESS
+    assert "markwright --help" in capsys.readouterr().out
+    mock_convert.assert_not_called()
+
+
+def test_choosing_language_switches_the_banner_language(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mock_convert: MagicMock,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    _answer_prompts(monkeypatch, "3", "4")  # switch language -> quit
+
+    run_menu([])  # defaults to English
+
+    assert "Convierte un PDF a Markdown" in capsys.readouterr().out
 
 
 def test_keyboard_interrupt_exits_cleanly_without_a_traceback(
@@ -220,8 +270,7 @@ def test_progress_messages_are_printed_while_converting(
 ) -> None:
     (tmp_path / "a.pdf").touch()
     monkeypatch.chdir(tmp_path)
-    _answer_prompts(monkeypatch, "1")
-    _answer_confirms(monkeypatch, False)
+    _answer_prompts(monkeypatch, "1", "1", "4")
 
     def _fake_convert(input_path: Path, password: str | None = None, on_progress=None) -> Path:
         on_progress(menu_module.ConversionStage.STARTED)
@@ -243,8 +292,7 @@ def test_an_unexpected_error_shows_a_generic_message_without_a_traceback(
     (tmp_path / "a.pdf").touch()
     monkeypatch.chdir(tmp_path)
     mock_convert.side_effect = RuntimeError("bug!")
-    _answer_prompts(monkeypatch, "1")
-    _answer_confirms(monkeypatch, False)
+    _answer_prompts(monkeypatch, "1", "1", "4")
 
     exit_code = run_menu([])
 
@@ -262,8 +310,7 @@ def test_lang_flag_changes_the_interface_language(
 ) -> None:
     monkeypatch.chdir(tmp_path)
     mock_convert.return_value = tmp_path / "x.md"
-    _answer_prompts(monkeypatch, str(tmp_path / "x.pdf"))
-    _answer_confirms(monkeypatch, False)
+    _answer_prompts(monkeypatch, "1", str(tmp_path / "x.pdf"), "4")
 
     run_menu(["--lang", "es"])
 
@@ -279,8 +326,7 @@ def test_a_malicious_filename_is_sanitized_before_being_listed(
     (tmp_path / "[bold]evil.pdf").touch()
     monkeypatch.chdir(tmp_path)
     mock_convert.return_value = tmp_path / "out.md"
-    _answer_prompts(monkeypatch, "1")
-    _answer_confirms(monkeypatch, False)
+    _answer_prompts(monkeypatch, "1", "1", "4")
 
     run_menu([])
 

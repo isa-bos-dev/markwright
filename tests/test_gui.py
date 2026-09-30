@@ -7,7 +7,8 @@ import time
 import tkinter as tk
 from collections.abc import Callable, Iterator
 from pathlib import Path
-from tkinter import filedialog
+from tkinter import filedialog, ttk
+from tkinter import font as tkfont
 
 import conversion_fakes as fakes
 import pytest
@@ -99,6 +100,45 @@ def test_packaged_images_load_at_their_declared_size(tk_root: tk.Tk) -> None:
     image = load_image("logo-96.png", tk_root)
 
     assert (image.width(), image.height()) == (96, 96)
+
+
+# --- Theme ---
+
+
+def test_font_size_small_and_large_scale_relative_to_normal(tk_root: tk.Tk) -> None:
+    apply_theme(tk_root, font_size="normal")
+    normal_size = tkfont.nametofont("SunValleyTitleFont", tk_root).actual("size")
+
+    apply_theme(tk_root, font_size="large")
+    large_size = tkfont.nametofont("SunValleyTitleFont", tk_root).actual("size")
+
+    apply_theme(tk_root, font_size="small")
+    small_size = tkfont.nametofont("SunValleyTitleFont", tk_root).actual("size")
+
+    apply_theme(tk_root, font_size="normal")  # restore for the rest of the suite
+    assert (small_size, large_size) == (normal_size - 2, normal_size + 2)
+
+
+def test_reapplying_the_same_font_size_does_not_compound(tk_root: tk.Tk) -> None:
+    apply_theme(tk_root, font_size="large")
+    first = tkfont.nametofont("SunValleyTitleFont", tk_root).actual("size")
+
+    apply_theme(tk_root, font_size="large")
+    second = tkfont.nametofont("SunValleyTitleFont", tk_root).actual("size")
+
+    apply_theme(tk_root, font_size="normal")  # restore for the rest of the suite
+    assert first == second
+
+
+def test_switching_theme_changes_the_status_label_colors(tk_root: tk.Tk) -> None:
+    apply_theme(tk_root, theme="light")
+    light_color = ttk.Style(tk_root).lookup("Error.TLabel", "foreground")
+
+    apply_theme(tk_root, theme="dark")
+    dark_color = ttk.Style(tk_root).lookup("Error.TLabel", "foreground")
+
+    apply_theme(tk_root, theme="light")  # restore for the rest of the suite
+    assert light_color != dark_color
 
 
 # --- Language screen ---

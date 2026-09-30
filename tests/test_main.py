@@ -28,6 +28,13 @@ def gui_run(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock
 
 
+@pytest.fixture
+def menu_run(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    mock = MagicMock(return_value=0)
+    monkeypatch.setattr("markwright.cli.menu.run_menu", mock)
+    return mock
+
+
 def test_importing_the_adapters_does_not_load_the_heavy_ml_libraries() -> None:
     code = (
         "import sys, markwright.cli.cli, markwright.gui.gui;"
@@ -59,6 +66,26 @@ def test_with_arguments_the_cli_runs_and_its_exit_code_is_returned(
     gui_run.assert_not_called()
 
 
+def test_menu_as_first_argument_runs_the_interactive_menu(
+    gui_run: MagicMock, cli_run: MagicMock, menu_run: MagicMock
+) -> None:
+    menu_run.return_value = 7
+
+    assert main(["menu", "--lang", "es"]) == 7
+
+    menu_run.assert_called_once_with(["--lang", "es"])
+    cli_run.assert_not_called()
+    gui_run.assert_not_called()
+
+
+def test_menu_alone_forwards_no_extra_arguments(
+    gui_run: MagicMock, cli_run: MagicMock, menu_run: MagicMock
+) -> None:
+    main(["menu"])
+
+    menu_run.assert_called_once_with([])
+
+
 def test_help_alone_goes_to_the_cli_instead_of_opening_the_gui(
     gui_run: MagicMock, cli_run: MagicMock
 ) -> None:
@@ -68,9 +95,7 @@ def test_help_alone_goes_to_the_cli_instead_of_opening_the_gui(
     gui_run.assert_not_called()
 
 
-def test_arguments_default_to_sys_argv(
-    monkeypatch: pytest.MonkeyPatch, cli_run: MagicMock
-) -> None:
+def test_arguments_default_to_sys_argv(monkeypatch: pytest.MonkeyPatch, cli_run: MagicMock) -> None:
     monkeypatch.setattr(sys, "argv", ["markwright", "report.pdf"])
 
     main()

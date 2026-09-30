@@ -21,12 +21,28 @@ EXIT_CORRUPT_FILE = 3
 EXIT_OUTPUT_WRITE_FAILED = 4
 EXIT_UNEXPECTED_ERROR = 70
 
-_EXIT_CODE_BY_EXCEPTION: dict[type[ConversionError], int] = {
+EXIT_CODE_BY_EXCEPTION: dict[type[ConversionError], int] = {
     UnsupportedFileError: EXIT_UNSUPPORTED_FILE,
     InvalidPasswordError: EXIT_INVALID_PASSWORD,
     CorruptFileError: EXIT_CORRUPT_FILE,
     OutputWriteError: EXIT_OUTPUT_WRITE_FAILED,
 }
+
+
+def print_progress(
+    stage: ConversionStage, warning: ConversionWarning | None, lang: str, quiet: bool = False
+) -> None:
+    """Print one progress update, shared by the CLI and the interactive menu."""
+    if stage == ConversionStage.PARTIAL_SUCCESS:
+        key = (
+            "progress.partial_success.retryable"
+            if warning is not None and warning.retryable
+            else "progress.partial_success.not_retryable"
+        )
+        print(t(key, lang), file=sys.stderr)
+        return
+    if not quiet:
+        print(t(f"progress.{stage.value}", lang))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -35,24 +51,28 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("input_path", help="Path to the PDF file to convert.")
     parser.add_argument(
-        "-o", "--output", dest="output_path", default=None,
+        "-o",
+        "--output",
+        dest="output_path",
+        default=None,
         help="Destination path for the generated Markdown file.",
     )
     parser.add_argument(
-        "--lang", choices=list(SUPPORTED_LANGUAGES), default=DEFAULT_LANGUAGE,
-        help="Interface language."
+        "--lang",
+        choices=list(SUPPORTED_LANGUAGES),
+        default=DEFAULT_LANGUAGE,
+        help="Interface language.",
     )
     parser.add_argument(
-        "--password", default=None,
+        "--password",
+        default=None,
         help=(
             "Password for a protected PDF. Warning: this may remain visible in "
             "your shell history; prefer running without this flag if that is a "
             "concern."
         ),
     )
-    parser.add_argument(
-        "-q", "--quiet", action="store_true", help="Suppress progress messages."
-    )
+    parser.add_argument("-q", "--quiet", action="store_true", help="Suppress progress messages.")
     parser.add_argument(
         "--verbose", action="store_true", help="Show technical error details for debugging."
     )
@@ -64,16 +84,7 @@ def run(argv: Sequence[str] | None = None) -> int:
     lang = args.lang
 
     def on_progress(stage: ConversionStage, warning: ConversionWarning | None = None) -> None:
-        if stage == ConversionStage.PARTIAL_SUCCESS:
-            key = (
-                "progress.partial_success.retryable"
-                if warning is not None and warning.retryable
-                else "progress.partial_success.not_retryable"
-            )
-            print(t(key, lang), file=sys.stderr)
-            return
-        if not args.quiet:
-            print(t(f"progress.{stage.value}", lang))
+        print_progress(stage, warning, lang, args.quiet)
 
     try:
         output_path = convert_pdf_to_md(
@@ -84,19 +95,18 @@ def run(argv: Sequence[str] | None = None) -> int:
         )
     except ConversionError as exc:
         message_key = ERROR_MESSAGE_KEYS.get(type(exc), "error.unexpected")
-        _print_domain_error(exc, message_key, lang, args.verbose)
-        return _EXIT_CODE_BY_EXCEPTION.get(type(exc), EXIT_UNEXPECTED_ERROR)
-    except Exception as exc:  # noqa: BLE001 - deliberate catch-all, see _print_unexpected_error
-        _print_unexpected_error(exc, args.verbose)
+        print_domain_error(exc, message_key, lang, args.verbose)
+        return EXIT_CODE_BY_EXCEPTION.get(type(exc), EXIT_UNEXPECTED_ERROR)
+    except Exception as exc:  # noqa: BLE001 - deliberate catch-all, see print_unexpected_error
+        print_unexpected_error(exc, args.verbose)
         return EXIT_UNEXPECTED_ERROR
 
     print(output_path)
     return EXIT_SUCCESS
 
 
-def _print_domain_error(
-    exc: ConversionError, message_key: str, lang: str, verbose: bool
-) -> None:
+def print_domain_error(exc: ConversionError, message_key: str, lang: str, verbose: bool) -> None:
+    """Print a localized error message, shared by the CLI and the interactive menu."""
     path = getattr(exc, "path", "")
     print(t(message_key, lang, path=path), file=sys.stderr)
     if verbose:
@@ -105,7 +115,7 @@ def _print_domain_error(
             print(f"[debug] caused by: {exc.__cause__!r}", file=sys.stderr)
 
 
-def _print_unexpected_error(exc: Exception, verbose: bool) -> None:
+def print_unexpected_error(exc: Exception, verbose: bool) -> None:
     if verbose:
         traceback.print_exception(type(exc), exc, exc.__traceback__)
     else:

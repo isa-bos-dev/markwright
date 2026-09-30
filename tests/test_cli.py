@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from markwright import get_version
 from markwright.cli.cli import (
     EXIT_CORRUPT_FILE,
     EXIT_INVALID_PASSWORD,
@@ -44,6 +45,32 @@ def _progress_emitting_convert(
         return result
 
     return _fake
+
+
+# --- Version ---
+
+
+@pytest.mark.parametrize("flag", ["--version", "-V"])
+def test_version_flag_prints_the_app_name_and_version_then_exits_zero(
+    flag: str, mock_convert: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        run([flag])
+
+    assert exc_info.value.code == 0
+    assert capsys.readouterr().out.strip() == f"Markwright {get_version()}"
+    mock_convert.assert_not_called()
+
+
+def test_version_flag_wins_over_a_missing_input_path(
+    mock_convert: MagicMock, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Same standard argparse behavior as --help: exits before requiring input_path."""
+    with pytest.raises(SystemExit) as exc_info:
+        run(["--version"])
+
+    assert exc_info.value.code == 0
+    mock_convert.assert_not_called()
 
 
 # --- Success cases ---

@@ -3,6 +3,7 @@ import sys
 import traceback
 from collections.abc import Sequence
 
+from markwright import APP_NAME, get_version
 from markwright.core.converter import ConversionStage, ConversionWarning, convert_pdf_to_md
 from markwright.core.exceptions import (
     ConversionError,
@@ -48,6 +49,12 @@ def print_progress(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="markwright", description="Convert a PDF file to Markdown."
+    )
+    parser.add_argument(
+        "--version",
+        "-V",
+        action="version",
+        version=f"{APP_NAME} {get_version()}",
     )
     parser.add_argument("input_path", help="Path to the PDF file to convert.")
     parser.add_argument(

@@ -1,7 +1,26 @@
-from importlib.metadata import metadata
+from importlib.metadata import PackageNotFoundError, metadata, version
 from pathlib import Path
 
+import pytest
+
+from markwright import get_version
+
 _ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_get_version_matches_the_installed_package_metadata() -> None:
+    assert get_version() == version("markwright")
+
+
+def test_get_version_falls_back_when_metadata_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def missing(_name: str) -> str:
+        raise PackageNotFoundError
+
+    monkeypatch.setattr("markwright.version", missing)
+
+    assert get_version() == "0.0.0+unknown"
 
 
 def test_the_package_declares_its_license_and_author() -> None:

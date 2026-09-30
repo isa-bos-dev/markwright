@@ -17,13 +17,12 @@ from markwright.core.converter import ConversionStage, ConversionWarning
 from markwright.core.exceptions import InvalidPasswordError
 from markwright.gui.assets import load_image
 from markwright.gui.gui import App
-from markwright.gui.language_screen import LanguageScreen, build_language_prompt
 from markwright.gui.main_screen import MainScreen, _open_in_file_manager
 from markwright.gui.settings import Settings
 from markwright.gui.settings_dialog import SettingsDialog
 from markwright.gui.theme import apply_theme
 from markwright.gui.tooltip import Tooltip
-from markwright.i18n import SUPPORTED_LANGUAGES, t
+from markwright.i18n import t
 
 _WAIT_TIMEOUT_SECONDS = 5
 
@@ -53,15 +52,6 @@ def _release_tk_garbage() -> None:
     object would need the main loop (which these tests do not run) and stall.
     """
     gc.collect()
-
-
-@pytest.fixture
-def selections(tk_root: tk.Tk) -> Iterator[tuple[LanguageScreen, list[str]]]:
-    selected: list[str] = []
-    screen = LanguageScreen(tk_root, on_selected=selected.append)
-    yield screen, selected
-    screen.destroy()
-    _release_tk_garbage()
 
 
 @pytest.fixture
@@ -100,9 +90,9 @@ def _choose_pdf(screen: MainScreen, monkeypatch: pytest.MonkeyPatch, path: Path)
 
 
 def test_packaged_images_load_at_their_declared_size(tk_root: tk.Tk) -> None:
-    image = load_image("logo-96.png", tk_root)
+    image = load_image("logo-56.png", tk_root)
 
-    assert (image.width(), image.height()) == (96, 96)
+    assert (image.width(), image.height()) == (56, 56)
 
 
 # --- Theme ---
@@ -144,49 +134,34 @@ def test_switching_theme_changes_the_status_label_colors(tk_root: tk.Tk) -> None
     assert light_color != dark_color
 
 
-# --- Language screen ---
+# --- App startup ---
 
 
-def test_prompt_contains_the_prompt_of_every_supported_language() -> None:
-    assert build_language_prompt() == "Select your language / Selecciona tu idioma"
-
-
-def test_one_button_per_supported_language_with_native_names_in_order(
-    selections: tuple[LanguageScreen, list[str]],
+def test_app_starts_on_main_screen_and_the_gear_icon_changes_and_persists_settings(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    screen, _ = selections
+    """One App() for both facts: a second live Tk root in the same process is best avoided."""
+    monkeypatch.setattr("markwright.gui.gui.load_settings", lambda: Settings())
+    saved: list[Settings] = []
+    monkeypatch.setattr("markwright.gui.gui.save_settings", saved.append)
 
-    assert list(screen.buttons) == list(SUPPORTED_LANGUAGES)
-    assert [button.cget("text") for button in screen.buttons.values()] == list(
-        SUPPORTED_LANGUAGES.values()
-    )
-
-
-def test_clicking_a_language_button_reports_its_code(
-    selections: tuple[LanguageScreen, list[str]],
-) -> None:
-    screen, selected = selections
-
-    screen.buttons["es"].invoke()
-    screen.buttons["en"].invoke()
-
-    assert selected == ["es", "en"]
-
-
-@pytest.mark.usefixtures("tk_root")
-def test_app_starts_on_the_language_screen_then_moves_to_the_main_screen() -> None:
     app = App()
     app.withdraw()
     try:
         assert len(app.winfo_children()) == 1
-        assert isinstance(app.screen, LanguageScreen)
-
-        app.screen.buttons["es"].invoke()
-
         assert isinstance(app.screen, MainScreen)
+        assert app.screen.convert_button.cget("text") == t("main.convert", "en")
+
+        app.screen.settings_button.invoke()
+        dialog = next(child for child in app.winfo_children() if isinstance(child, SettingsDialog))
+        dialog.language_buttons["es"].invoke()
+
         assert app.screen.convert_button.cget("text") == t("main.convert", "es")
+        assert saved == [Settings(language="es")]
+        dialog.destroy()
     finally:
         app.destroy()
+    _release_tk_garbage()
 
 
 # --- Main screen ---

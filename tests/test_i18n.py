@@ -25,7 +25,6 @@ def test_every_domain_error_maps_to_a_message_translated_in_every_language(
         assert key in STRINGS[language]
 
 
-
 def test_supported_languages_maps_codes_to_native_names() -> None:
     assert SUPPORTED_LANGUAGES == {"en": "English", "es": "Español"}
 
@@ -36,12 +35,6 @@ def test_supported_languages_match_the_languages_with_translations() -> None:
 
 def test_default_language_is_supported() -> None:
     assert DEFAULT_LANGUAGE in SUPPORTED_LANGUAGES
-
-
-def test_language_selector_prompt_has_a_translation_in_every_language() -> None:
-    for language in SUPPORTED_LANGUAGES:
-        assert "language_selector.prompt" in STRINGS[language]
-
 
 
 def test_t_returns_english_text_for_known_key() -> None:

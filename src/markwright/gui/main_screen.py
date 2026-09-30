@@ -43,7 +43,9 @@ class MainScreen(ttk.Frame):
         self._job: ConversionJob | None = None
         self._warning_text = ""
         self._poll_id: str | None = None
-        self._password = tk.StringVar()
+        # master=self: an implicit default root breaks when more than one Tk()
+        # root exists in the process (as in the test suite).
+        self._password = tk.StringVar(master=self)
         self._build()
 
     def _t(self, key: str, **values: object) -> str:

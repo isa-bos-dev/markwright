@@ -29,9 +29,12 @@ class SettingsDialog(tk.Toplevel):
         body = ttk.Frame(self, padding=(24, 20))
         body.grid()
 
-        self._language = tk.StringVar(value=settings.language)
-        self._theme = tk.StringVar(value=settings.theme)
-        self._font_size = tk.StringVar(value=settings.font_size)
+        # ``master`` is explicit: relying on Tkinter's implicit default root
+        # breaks whenever more than one Tk() root exists in the process (as
+        # in the test suite), binding the variable to the wrong interpreter.
+        self._language = tk.StringVar(master=self, value=settings.language)
+        self._theme = tk.StringVar(master=self, value=settings.theme)
+        self._font_size = tk.StringVar(master=self, value=settings.font_size)
 
         self.language_buttons = self._add_group(
             body,

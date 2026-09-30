@@ -33,7 +33,6 @@ STRINGS: dict[str, dict[str, str]] = {
             "a temporary issue."
         ),
         "error.unexpected": ("An unexpected error occurred. Run with --verbose for more details."),
-        "language_selector.prompt": "Select your language",
         "error.gui_unavailable": (
             "The graphical interface could not be started ({reason}). "
             "You can still use the command line: markwright <file.pdf>"
@@ -88,7 +87,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "error.unexpected": (
             "Ocurrió un error inesperado. Ejecuta con --verbose para más detalles."
         ),
-        "language_selector.prompt": "Selecciona tu idioma",
         "error.gui_unavailable": (
             "No se pudo iniciar la interfaz gráfica ({reason}). "
             "Puedes usar la línea de comandos: markwright <archivo.pdf>"

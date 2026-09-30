@@ -14,7 +14,7 @@ PACKAGE_ASSETS = ROOT / "src" / "markwright" / "assets"
 
 ICON_SIZES = (16, 24, 32, 48, 64, 128, 256)
 WINDOW_ICON_SIZES = (32, 64, 256)
-UI_LOGO_SIZES = (56, 96)
+UI_LOGO_SIZES = (56,)
 README_LOGO_SIZE = 512
 
 

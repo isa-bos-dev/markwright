@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import conversion_fakes as fakes
 import pytest
 
 from markwright.core.converter import ConversionStage, ConversionWarning
@@ -31,7 +32,7 @@ def test_job_forwards_its_inputs_and_reports_progress_then_the_output_path(
         on_progress(ConversionStage.DONE)
         return Path("out.md")
 
-    monkeypatch.setattr("markwright.gui.worker.convert_pdf_to_md", fake_convert)
+    fakes.install(monkeypatch, fake_convert)
 
     events = _run(ConversionJob(Path("in.pdf"), password="secret"))
 
@@ -52,7 +53,7 @@ def test_job_forwards_the_warning_of_a_partial_success(
         on_progress(ConversionStage.PARTIAL_SUCCESS, warning)
         return Path("out.md")
 
-    monkeypatch.setattr("markwright.gui.worker.convert_pdf_to_md", fake_convert)
+    fakes.install(monkeypatch, fake_convert)
 
     events = _run(ConversionJob(Path("in.pdf")))
 
@@ -63,10 +64,7 @@ def test_job_forwards_the_warning_of_a_partial_success(
 def test_job_reports_any_exception_as_a_failure_instead_of_dying_silently(
     monkeypatch: pytest.MonkeyPatch, error: Exception
 ) -> None:
-    def fake_convert(input_path, password=None, on_progress=None):
-        raise error
-
-    monkeypatch.setattr("markwright.gui.worker.convert_pdf_to_md", fake_convert)
+    fakes.install(monkeypatch, fakes.raising(lambda _: error))
 
     events = _run(ConversionJob(Path("in.pdf")))
 

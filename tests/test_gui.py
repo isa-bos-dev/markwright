@@ -9,6 +9,7 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from tkinter import filedialog
 
+import conversion_fakes as fakes
 import pytest
 
 from markwright.core.converter import ConversionStage, ConversionWarning
@@ -94,10 +95,6 @@ def _choose_pdf(screen: MainScreen, monkeypatch: pytest.MonkeyPatch, path: Path)
     screen.choose_button.invoke()
 
 
-def _fake_conversion(monkeypatch: pytest.MonkeyPatch, fake: Callable[..., Path]) -> None:
-    monkeypatch.setattr("markwright.gui.worker.convert_pdf_to_md", fake)
-
-
 def test_packaged_images_load_at_their_declared_size(tk_root: tk.Tk) -> None:
     image = load_image("logo-96.png", tk_root)
 
@@ -159,7 +156,7 @@ def test_choosing_a_pdf_and_converting_shows_where_the_result_was_saved(
     tmp_path: Path,
 ) -> None:
     output = tmp_path / "report.md"
-    _fake_conversion(monkeypatch, lambda input_path, password=None, on_progress=None: output)
+    fakes.install(monkeypatch, fakes.returning(output))
     assert main_screen.convert_button.instate(["disabled"])
 
     _choose_pdf(main_screen, monkeypatch, tmp_path / "report.pdf")
@@ -186,7 +183,7 @@ def test_a_protected_pdf_asks_for_the_password_and_retries_with_it(
             raise InvalidPasswordError(input_path)
         return tmp_path / "report.md"
 
-    _fake_conversion(monkeypatch, fake_convert)
+    fakes.install(monkeypatch, fake_convert)
     assert not _is_shown(main_screen.password_entry)
     assert main_screen.password_entry.cget("show") == "•"
 
@@ -216,7 +213,7 @@ def test_a_partial_conversion_shows_the_warning_and_the_saved_file(
         on_progress(ConversionStage.PARTIAL_SUCCESS, warning)
         return output
 
-    _fake_conversion(monkeypatch, fake_convert)
+    fakes.install(monkeypatch, fake_convert)
     _choose_pdf(main_screen, monkeypatch, tmp_path / "report.pdf")
 
     main_screen.convert_button.invoke()
@@ -244,10 +241,7 @@ def test_choosing_another_file_clears_the_previous_message_and_password_request(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    def needs_password(input_path, password=None, on_progress=None):
-        raise InvalidPasswordError(input_path)
-
-    _fake_conversion(monkeypatch, needs_password)
+    fakes.install(monkeypatch, fakes.raising(InvalidPasswordError))
     _choose_pdf(main_screen, monkeypatch, tmp_path / "first.pdf")
     main_screen.convert_button.invoke()
     _pump(tk_root, lambda: _is_shown(main_screen.password_entry))
@@ -265,17 +259,16 @@ def test_an_unexpected_error_shows_a_generic_message_and_unlocks_the_controls(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    def broken(input_path, password=None, on_progress=None):
-        raise RuntimeError("bug")
-
-    _fake_conversion(monkeypatch, broken)
+    fakes.install(monkeypatch, fakes.raising(lambda _: RuntimeError("bug")))
     _choose_pdf(main_screen, monkeypatch, tmp_path / "report.pdf")
 
     main_screen.convert_button.invoke()
     _pump(
         tk_root,
-        lambda: main_screen.convert_button.instate(["!disabled"])
-        and main_screen.status_label.cget("text") != "",
+        lambda: (
+            main_screen.convert_button.instate(["!disabled"])
+            and main_screen.status_label.cget("text") != ""
+        ),
     )
 
     assert main_screen.status_label.cget("text") == t("error.unexpected_gui", "en")
@@ -289,12 +282,7 @@ def test_controls_stay_locked_across_several_polls_and_unlock_afterwards(
     tmp_path: Path,
 ) -> None:
     release = threading.Event()
-
-    def slow_convert(input_path, password=None, on_progress=None):
-        release.wait(timeout=_WAIT_TIMEOUT_SECONDS)
-        return tmp_path / "report.md"
-
-    _fake_conversion(monkeypatch, slow_convert)
+    fakes.install(monkeypatch, fakes.blocked_until(release, tmp_path / "report.md"))
     _choose_pdf(main_screen, monkeypatch, tmp_path / "report.pdf")
 
     main_screen.convert_button.invoke()
@@ -324,7 +312,7 @@ def test_the_current_stage_is_shown_while_converting(
         release.wait(timeout=_WAIT_TIMEOUT_SECONDS)
         return tmp_path / "report.md"
 
-    _fake_conversion(monkeypatch, staged_convert)
+    fakes.install(monkeypatch, staged_convert)
     _choose_pdf(main_screen, monkeypatch, tmp_path / "report.pdf")
 
     main_screen.convert_button.invoke()
@@ -342,13 +330,7 @@ def test_a_second_conversion_cannot_start_while_one_is_running(
 ) -> None:
     release = threading.Event()
     started: list[int] = []
-
-    def slow_convert(input_path, password=None, on_progress=None):
-        started.append(1)
-        release.wait(timeout=_WAIT_TIMEOUT_SECONDS)
-        return tmp_path / "report.md"
-
-    _fake_conversion(monkeypatch, slow_convert)
+    fakes.install(monkeypatch, fakes.blocked_until(release, tmp_path / "report.md", started))
     _choose_pdf(main_screen, monkeypatch, tmp_path / "report.pdf")
     main_screen.convert_button.invoke()
 
@@ -366,12 +348,7 @@ def test_closing_the_screen_during_a_conversion_leaves_no_pending_updates(
     tmp_path: Path,
 ) -> None:
     release = threading.Event()
-
-    def slow_convert(input_path, password=None, on_progress=None):
-        release.wait(timeout=_WAIT_TIMEOUT_SECONDS)
-        return tmp_path / "report.md"
-
-    _fake_conversion(monkeypatch, slow_convert)
+    fakes.install(monkeypatch, fakes.blocked_until(release, tmp_path / "report.md"))
     _choose_pdf(main_screen, monkeypatch, tmp_path / "report.pdf")
     main_screen.convert_button.invoke()
 
@@ -389,9 +366,7 @@ def test_the_open_folder_button_opens_the_folder_of_the_result(
 ) -> None:
     opened: list[Path] = []
     monkeypatch.setattr("markwright.gui.main_screen._open_in_file_manager", opened.append)
-    _fake_conversion(
-        monkeypatch, lambda input_path, password=None, on_progress=None: tmp_path / "report.md"
-    )
+    fakes.install(monkeypatch, fakes.returning(tmp_path / "report.md"))
     _choose_pdf(main_screen, monkeypatch, tmp_path / "report.pdf")
     main_screen.convert_button.invoke()
     _pump(tk_root, lambda: _is_shown(main_screen.open_folder_button))

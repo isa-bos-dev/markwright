@@ -29,9 +29,7 @@ if TYPE_CHECKING:
 # Categories considered likely environmental/transient (worth retrying).
 # Anything else (content-specific failures, or unknown) is treated as not
 # confidently retryable, to avoid promising a retry will help when it won't.
-_TRANSIENT_FAILURE_CATEGORIES = frozenset(
-    {"timeout", "capacity", "source_unavailable", "internal"}
-)
+_TRANSIENT_FAILURE_CATEGORIES = frozenset({"timeout", "capacity", "source_unavailable", "internal"})
 
 
 class ConversionStage(StrEnum):
@@ -137,6 +135,12 @@ def _prepare_runtime() -> Path | None:
     os.environ.setdefault("TQDM_DISABLE", "1")
     warnings.filterwarnings("ignore", category=UserWarning, module=r"torch(\.|$)")
 
+    # huggingface_hub sends anonymous usage telemetry unless disabled (SEC-TH-007);
+    # it is disabled for free by HF_HUB_OFFLINE below, but only once local models
+    # are found — set explicitly and unconditionally so the very first run, before
+    # any model is on disk yet, never sends it either.
+    os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+
     models_dir = find_models_dir()
     if models_dir is not None:
         # Everything needed is on disk: never go online, so document content and
@@ -207,8 +211,6 @@ def _cleanup_partial_output(output_paths: OutputPaths) -> None:
 
 def _classify_partial_success(result: ConversionResult) -> ConversionWarning:
     categories = tuple(sorted({err.category.value for err in result.errors}))
-    pages = tuple(
-        sorted({err.page_no for err in result.errors if err.page_no is not None})
-    )
+    pages = tuple(sorted({err.page_no for err in result.errors if err.page_no is not None}))
     retryable = bool(categories) and all(c in _TRANSIENT_FAILURE_CATEGORIES for c in categories)
     return ConversionWarning(retryable=retryable, categories=categories, affected_pages=pages)

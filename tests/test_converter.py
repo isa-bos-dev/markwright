@@ -221,7 +221,7 @@ def test_output_collision_uses_the_next_free_suffix(
     assert result_path == input_path.parent / "input_1.md"
 
 
-_OFFLINE_VARIABLES = ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE")
+_OFFLINE_VARIABLES = ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "HF_HUB_DISABLE_TELEMETRY")
 
 
 def _run_and_capture_pipeline_options(
@@ -299,6 +299,36 @@ def test_an_explicit_offline_setting_from_the_user_is_respected(
     assert environment["HF_HUB_OFFLINE"] == "0"
 
 
+def test_hub_telemetry_is_disabled_even_before_any_local_model_exists(
+    plain_pdf_factory: Callable[..., Path],
+    conversion_result_factory: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """SEC-TH-007: the very first run, before any model is on disk, must not phone home."""
+    monkeypatch.setattr("markwright.core.converter.find_models_dir", lambda: None)
+    environment = _environment_without_offline_flags()
+
+    _run_and_capture_pipeline_options(
+        monkeypatch, plain_pdf_factory(), conversion_result_factory(), environment
+    )
+
+    assert environment["HF_HUB_DISABLE_TELEMETRY"] == "1"
+
+
+def test_an_explicit_telemetry_setting_from_the_user_is_respected(
+    plain_pdf_factory: Callable[..., Path],
+    conversion_result_factory: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    environment = _environment_without_offline_flags() | {"HF_HUB_DISABLE_TELEMETRY": "0"}
+
+    _run_and_capture_pipeline_options(
+        monkeypatch, plain_pdf_factory(), conversion_result_factory(), environment
+    )
+
+    assert environment["HF_HUB_DISABLE_TELEMETRY"] == "0"
+
+
 def test_third_party_chatter_is_silenced_for_end_users(
     plain_pdf_factory: Callable[..., Path],
     conversion_result_factory: Callable[..., SimpleNamespace],
@@ -348,6 +378,8 @@ def test_without_a_local_models_folder_the_docling_defaults_are_left_untouched(
     conversion_result_factory: Callable[..., SimpleNamespace],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Offline mode itself stays untouched without local models — telemetry is always
+    disabled regardless (SEC-TH-007, see the dedicated tests above)."""
     environment = _environment_without_offline_flags()
 
     options = _run_and_capture_pipeline_options(
@@ -355,7 +387,7 @@ def test_without_a_local_models_folder_the_docling_defaults_are_left_untouched(
     )
 
     assert options.artifacts_path is None
-    assert not set(_OFFLINE_VARIABLES) & environment.keys()
+    assert not {"HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"} & environment.keys()
 
 
 # --- Partial success ---

@@ -98,6 +98,23 @@ def find_unused_translation_keys(keys: Iterable[str], sources: Iterable[Path]) -
     return set(keys) - used
 
 
+_DEVELOPER_PATH_PATTERNS = (
+    re.compile(r"[A-Za-z]:\\Users\\"),
+    re.compile(r"/home/"),
+    re.compile(r"/Users/"),
+)
+
+
+def find_hardcoded_developer_paths(strings: Iterable[str]) -> set[str]:
+    """Strings that look like an absolute path from a specific developer machine.
+
+    Catches an accidental leak (SEC-TH-003) such as a copy-pasted example path
+    left in a translated message. ``{path}``-style placeholders are fine: they
+    are filled at runtime with the user's own file, which they already know.
+    """
+    return {text for text in strings if any(p.search(text) for p in _DEVELOPER_PATH_PATTERNS)}
+
+
 def find_unreferenced_assets(
     names: Iterable[str], sources: Iterable[Path], used_elsewhere: Iterable[str] = ()
 ) -> set[str]:
@@ -196,6 +213,12 @@ def test_every_translation_key_is_used_by_the_code() -> None:
     assert find_unused_translation_keys(keys, _production_sources()) == set()
 
 
+def test_no_translated_string_contains_a_hardcoded_developer_path() -> None:
+    all_strings = [text for table in STRINGS.values() for text in table.values()]
+
+    assert find_hardcoded_developer_paths(all_strings) == set()
+
+
 def test_every_packaged_asset_is_referenced() -> None:
     unreferenced = find_unreferenced_assets(
         _packaged_asset_names(), _production_sources(), _ASSETS_USED_OUTSIDE_PYTHON
@@ -268,6 +291,25 @@ def test_keys_built_from_the_progress_stage_are_recognised(tmp_path: Path) -> No
     unused = find_unused_translation_keys({"progress.started", "progress.nope"}, sources)
 
     assert unused == {"progress.nope"}
+
+
+def test_a_hardcoded_windows_developer_path_is_reported() -> None:
+    strings = ["Saved to: {path}", r"Saved to: C:\Users\isa\report.md"]
+
+    assert find_hardcoded_developer_paths(strings) == {r"Saved to: C:\Users\isa\report.md"}
+
+
+def test_a_hardcoded_unix_developer_path_is_reported() -> None:
+    strings = ["fine", "/home/isa/report.md", "/Users/isa/report.md"]
+
+    assert find_hardcoded_developer_paths(strings) == {
+        "/home/isa/report.md",
+        "/Users/isa/report.md",
+    }
+
+
+def test_a_placeholder_alone_is_not_reported() -> None:
+    assert find_hardcoded_developer_paths(["Saved to: {path}"]) == set()
 
 
 def test_an_unreferenced_asset_is_reported(tmp_path: Path) -> None:

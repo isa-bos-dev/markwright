@@ -13,8 +13,6 @@ README_LOGO = ROOT / "assets" / "logo-512.png"
 PACKAGE_ASSETS = ROOT / "src" / "markwright" / "assets"
 
 ICON_SIZES = (16, 24, 32, 48, 64, 128, 256)
-WINDOW_ICON_SIZES = (32, 64, 256)
-UI_LOGO_SIZES = (56,)
 README_LOGO_SIZE = 512
 
 
@@ -43,10 +41,6 @@ def main() -> None:
         sizes=[frame.size for frame in frames],
         append_images=frames[:-1],
     )
-    for side in WINDOW_ICON_SIZES:
-        resized(logo, side).save(PACKAGE_ASSETS / f"icon-{side}.png")
-    for side in UI_LOGO_SIZES:
-        resized(logo, side).save(PACKAGE_ASSETS / f"logo-{side}.png")
     resized(logo, README_LOGO_SIZE).save(README_LOGO, optimize=True)
 
 

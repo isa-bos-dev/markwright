@@ -1,7 +1,6 @@
 import runpy
 import subprocess
 import sys
-import tkinter as tk
 import tomllib
 from importlib import import_module
 from pathlib import Path
@@ -9,7 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from markwright.main import EXIT_GUI_UNAVAILABLE, main
+from markwright.main import main
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -22,13 +21,6 @@ def cli_run(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 
 @pytest.fixture
-def gui_run(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    mock = MagicMock()
-    monkeypatch.setattr("markwright.gui.gui.run", mock)
-    return mock
-
-
-@pytest.fixture
 def menu_run(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     mock = MagicMock(return_value=0)
     monkeypatch.setattr("markwright.cli.menu.run_menu", mock)
@@ -37,7 +29,7 @@ def menu_run(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 def test_importing_the_adapters_does_not_load_the_heavy_ml_libraries() -> None:
     code = (
-        "import sys, markwright.cli.cli, markwright.gui.gui;"
+        "import sys, markwright.cli.cli, markwright.cli.menu;"
         "print([m for m in ('docling', 'torch', 'transformers', 'easyocr') if m in sys.modules])"
     )
 
@@ -48,26 +40,30 @@ def test_importing_the_adapters_does_not_load_the_heavy_ml_libraries() -> None:
     assert result.stdout.strip() == "[]"
 
 
-def test_without_arguments_the_gui_starts(gui_run: MagicMock, cli_run: MagicMock) -> None:
+def test_without_arguments_the_interactive_menu_starts(
+    cli_run: MagicMock, menu_run: MagicMock
+) -> None:
+    """The menu is the effortless, no-setup entry point (no desktop GUI is built here —
+    see the `gui-desktop` branch)."""
     assert main([]) == 0
 
-    gui_run.assert_called_once_with()
+    menu_run.assert_called_once_with([])
     cli_run.assert_not_called()
 
 
-def test_with_arguments_the_cli_runs_and_its_exit_code_is_returned(
-    gui_run: MagicMock, cli_run: MagicMock
+def test_with_a_file_argument_the_cli_runs_and_its_exit_code_is_returned(
+    cli_run: MagicMock, menu_run: MagicMock
 ) -> None:
     cli_run.return_value = 3
 
     assert main(["report.pdf", "--lang", "es"]) == 3
 
     cli_run.assert_called_once_with(["report.pdf", "--lang", "es"])
-    gui_run.assert_not_called()
+    menu_run.assert_not_called()
 
 
 def test_menu_as_first_argument_runs_the_interactive_menu(
-    gui_run: MagicMock, cli_run: MagicMock, menu_run: MagicMock
+    cli_run: MagicMock, menu_run: MagicMock
 ) -> None:
     menu_run.return_value = 7
 
@@ -75,24 +71,21 @@ def test_menu_as_first_argument_runs_the_interactive_menu(
 
     menu_run.assert_called_once_with(["--lang", "es"])
     cli_run.assert_not_called()
-    gui_run.assert_not_called()
 
 
-def test_menu_alone_forwards_no_extra_arguments(
-    gui_run: MagicMock, cli_run: MagicMock, menu_run: MagicMock
-) -> None:
+def test_menu_alone_forwards_no_extra_arguments(cli_run: MagicMock, menu_run: MagicMock) -> None:
     main(["menu"])
 
     menu_run.assert_called_once_with([])
 
 
-def test_help_alone_goes_to_the_cli_instead_of_opening_the_gui(
-    gui_run: MagicMock, cli_run: MagicMock
+def test_help_alone_goes_to_the_cli_instead_of_the_menu(
+    cli_run: MagicMock, menu_run: MagicMock
 ) -> None:
     main(["--help"])
 
     cli_run.assert_called_once_with(["--help"])
-    gui_run.assert_not_called()
+    menu_run.assert_not_called()
 
 
 def test_arguments_default_to_sys_argv(monkeypatch: pytest.MonkeyPatch, cli_run: MagicMock) -> None:
@@ -120,43 +113,3 @@ def test_the_markwright_command_is_registered_and_resolves_to_main() -> None:
     module_name, function_name = pyproject["project"]["scripts"]["markwright"].split(":")
 
     assert getattr(import_module(module_name), function_name) is main
-
-
-def test_a_gui_that_cannot_start_reports_it_clearly_and_points_to_the_cli(
-    gui_run: MagicMock, capsys: pytest.CaptureFixture[str]
-) -> None:
-    gui_run.side_effect = tk.TclError("no display name and no $DISPLAY environment variable")
-
-    assert main([]) == EXIT_GUI_UNAVAILABLE
-
-    error_output = capsys.readouterr().err
-    assert "no display name" in error_output
-    assert "markwright <file.pdf>" in error_output
-    assert "Traceback" not in error_output
-
-
-def test_only_the_first_line_of_a_multiline_gui_failure_is_shown(
-    gui_run: MagicMock, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """SEC-TH-003: a verbose underlying error must not leak its later lines (a path, a stack)."""
-    gui_run.side_effect = tk.TclError(
-        r"no display name and no $DISPLAY environment variable"
-        "\nsite-packages path: C:\\Users\\dev\\.venv\\Lib\\site-packages\\tkinter\\__init__.py"
-    )
-
-    main([])
-
-    error_output = capsys.readouterr().err
-    assert "no display name" in error_output
-    assert "site-packages" not in error_output
-    assert "Traceback" not in error_output
-
-
-def test_a_missing_tkinter_is_reported_the_same_way(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    monkeypatch.setitem(sys.modules, "markwright.gui.gui", None)
-
-    assert main([]) == EXIT_GUI_UNAVAILABLE
-
-    assert "markwright <file.pdf>" in capsys.readouterr().err

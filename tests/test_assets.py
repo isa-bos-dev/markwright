@@ -12,10 +12,6 @@ _WINDOWS_ICON_SIZES = {(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 1
 @pytest.mark.parametrize(
     ("path", "side"),
     [
-        (_PACKAGE_ASSETS / "logo-56.png", 56),
-        (_PACKAGE_ASSETS / "icon-32.png", 32),
-        (_PACKAGE_ASSETS / "icon-64.png", 64),
-        (_PACKAGE_ASSETS / "icon-256.png", 256),
         (_README_LOGO, 512),
     ],
     ids=lambda value: value.name if isinstance(value, Path) else str(value),

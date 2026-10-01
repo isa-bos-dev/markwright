@@ -1,7 +1,7 @@
 [project]
 name = "markwright"
 version = "0.2.0"
-description = "Local, privacy-first PDF to Markdown converter with dual CLI/GUI and bilingual interface."
+description = "Local, privacy-first PDF to Markdown converter with a scriptable CLI and an interactive terminal menu, bilingual interface."
 authors = [
     { name = "IsaBosDev" }
 ]
@@ -20,8 +20,6 @@ dependencies = [
     "easyocr>=1.7.2",
     # Decrypts password-protected PDFs in memory: docling has no password support.
     "pypdf>=6.19.0",
-    # Visual theme of the GUI.
-    "sv-ttk>=2.6.1",
     # Interactive terminal menu (`markwright menu`). Already installed transitively
     # via docling; declared because it is now imported directly.
     "rich>=15.0.0",
@@ -63,19 +61,12 @@ max-complexity = 10
 
 # Every exception below states why it exists; nothing is silenced with a bare `# noqa`.
 [tool.ruff.lint.per-file-ignores]
-# docling loads PyTorch (~5 s): it is imported on the first conversion so that the GUI
-# window and `--help` stay instant.
+# docling loads PyTorch (~5 s): it is imported on the first conversion so the CLI
+# and `--help` stay instant.
 "src/markwright/core/converter.py" = ["PLC0415"]
 "src/markwright/core/pdf_source.py" = ["PLC0415"]
-# Each mode is imported only when used (the CLI never loads tkinter), and a missing
-# tkinter has to be caught at that import.
+# The CLI and the interactive menu are imported only when used.
 "src/markwright/main.py" = ["PLC0415"]
-# Opening the folder runs `open`/`xdg-open`/`os.startfile`, found through PATH.
-# Reviewed in SEC (005-security-hardening): the target is `resolve_output_paths(...)`,
-# computed entirely by Markwright from the input path the user already chose via a
-# trusted dialog/CLI/menu — never from the PDF's own content. False positives of
-# static analysis, not a real finding.
-"src/markwright/gui/main_screen.py" = ["S603", "S606", "S607"]
 # Test code: `assert` is the assertion; fakes must mirror the signature of what they
 # replace; the sample passwords and "/tmp" paths are not secrets or real files. Type hints
 # are required in the application code, not in tests or helper scripts.
@@ -110,9 +101,7 @@ testpaths = ["tests"]
 markers = [
     "integration: slow tests that run a real docling conversion (excluded by default)",
 ]
-# --capture=sys: pytest's default fd-level capture breaks Tcl/Tk start-up on Windows
-# ("Can't find a usable init.tcl") when a second Tk interpreter is created.
-addopts = "-m 'not integration' --capture=sys"
+addopts = "-m 'not integration'"
 
 # Run with:  uv run pytest --cov      (opt-in: it makes the suite ~2.5x slower)
 [tool.coverage.run]

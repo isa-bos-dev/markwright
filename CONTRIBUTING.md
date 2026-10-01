@@ -19,7 +19,7 @@ uv sync
 ```
 
 Run the app while developing with `uv run markwright ...` (see the README for the
-three ways to run it: GUI, CLI, interactive menu).
+two ways to run it: CLI, interactive menu).
 
 ## Before opening a pull request
 

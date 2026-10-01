@@ -9,12 +9,11 @@
 
 ---
 
-A local, privacy-first PDF to Markdown converter that preserves tables, headings and images. Built with a beginner-friendly GUI and a scriptable CLI, so both non-technical users and developers can use it — no internet connection required after the first-time model download, available in English and Spanish.
+A local, privacy-first PDF to Markdown converter that preserves tables, headings and images, built as a scriptable CLI and an interactive terminal menu — no internet connection required after the first-time model download, available in English and Spanish.
 
 <!-- Tech Stack Badges -->
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Docling](https://img.shields.io/badge/Docling-1A73E8?style=for-the-badge&logoColor=white)
-![Tkinter](https://img.shields.io/badge/Tkinter-306998?style=for-the-badge&logoColor=white)
 ![pytest](https://img.shields.io/badge/pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)
 ![Ruff](https://img.shields.io/badge/Ruff-D7FF64?style=for-the-badge&logo=ruff&logoColor=black)
 [![Version](https://img.shields.io/badge/version-0.2.0-informational?style=for-the-badge)](CHANGELOG.md)
@@ -33,16 +32,19 @@ the images embedded in the document. It reads scanned/image-only pages with OCR
 password-protected PDFs in memory. Everything runs on your own machine — see
 [Privacy](#privacy) below.
 
-You can use it three ways:
+You can use it two ways:
 
-- **A graphical interface** — double-click to open, choose a PDF, click convert.
-  No command line needed.
 - **A command-line tool**, for scripting: `markwright report.pdf`.
 - **An interactive terminal menu**, for picking a file without typing its full
-  path: `markwright menu`.
+  path, or without remembering any flag: `markwright menu` (or just `markwright`
+  with no arguments).
 
-The interface (GUI and CLI) is available in English and Spanish; you can change
-it, along with light/dark theme and font size, from the gear icon in the GUI.
+> **About the desktop GUI:** an earlier graphical interface was parked on the
+> [`gui-desktop`](https://github.com/isa-bos-dev/markwright/tree/gui-desktop)
+> branch (untouched, not actively maintained) in favor of focusing on the
+> fidelity of the conversion itself and a solid CLI. A more complete, polished
+> desktop app is a future goal once the tool supports more formats and
+> features — see `docs/constitution.md`'s Purpose section for the full reasoning.
 
 ## Try it now (from source)
 
@@ -61,18 +63,18 @@ uv sync
 Then, any of:
 
 ```bash
-uv run markwright                  # opens the graphical interface
+uv run markwright                  # interactive menu: pick a PDF from a list
 uv run markwright report.pdf       # converts one file from the command line
-uv run markwright menu             # interactive menu: pick a PDF from a list
+uv run markwright menu             # same interactive menu, explicitly
 uv run markwright --help           # every CLI option (language, output path, ...)
 ```
 
 The first conversion downloads the OCR/layout models it needs (a few hundred MB)
 from their official sources. After that, every conversion runs fully offline.
 
-Developed and tested primarily on Windows; the GUI's visual theme specifically
-targets Windows 11. The underlying code has fallbacks for opening the output
-folder on macOS/Linux, but those platforms haven't been verified yet.
+Developed and tested primarily on Windows. The underlying code has fallbacks for
+opening the output folder on macOS/Linux, but those platforms haven't been
+verified yet.
 
 ## Privacy
 

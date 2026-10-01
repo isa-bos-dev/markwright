@@ -18,7 +18,7 @@ What you expected to happen instead.
 
 **Environment**
 - Markwright version (`markwright --version`):
-- How you ran it: GUI / CLI / `markwright menu`
+- How you ran it: CLI / `markwright menu`
 - OS:
 
 **PDF that triggers it (if relevant)**

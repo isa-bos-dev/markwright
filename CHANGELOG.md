@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **The desktop GUI is parked** on the `gui-desktop` branch (untouched, not
+  actively maintained), in favor of focusing on conversion fidelity and a solid
+  CLI — see `docs/constitution.md`'s Purpose section for the full reasoning.
+  Running `markwright` with no arguments now opens the interactive menu (the
+  GUI's old role as the effortless entry point), instead of a graphical window.
+- `markwright menu`'s Help option now shows the CLI's own `--help` text in
+  place, instead of pointing you to a command you can't run from inside the
+  already-running menu.
+
+### Removed
+
+- Persistent GUI settings (language/theme/font size) and the `sv-ttk` dependency
+  — both were GUI-only.
+
 ## [0.2.0] - 2026-09-30
 
 ### Added

@@ -9,12 +9,11 @@
 
 ---
 
-Un conversor de PDF a Markdown local y respetuoso con la privacidad, que preserva tablas, encabezados e imágenes. Construido con una interfaz gráfica sencilla y una CLI para scripting, pensado tanto para usuarios sin conocimientos técnicos como para desarrolladores — sin necesitar conexión a internet tras la primera descarga de modelos, disponible en inglés y español.
+Un conversor de PDF a Markdown local y respetuoso con la privacidad, que preserva tablas, encabezados e imágenes, construido como una CLI para scripting y un menú interactivo de terminal — sin necesitar conexión a internet tras la primera descarga de modelos, disponible en inglés y español.
 
 <!-- Tech Stack Badges -->
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Docling](https://img.shields.io/badge/Docling-1A73E8?style=for-the-badge&logoColor=white)
-![Tkinter](https://img.shields.io/badge/Tkinter-306998?style=for-the-badge&logoColor=white)
 ![pytest](https://img.shields.io/badge/pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)
 ![Ruff](https://img.shields.io/badge/Ruff-D7FF64?style=for-the-badge&logo=ruff&logoColor=black)
 [![Version](https://img.shields.io/badge/version-0.2.0-informational?style=for-the-badge)](CHANGELOG.md)
@@ -33,17 +32,21 @@ escaneadas o solo-imagen mediante OCR (EasyOCR) como PDFs con una capa de texto
 real, y puede descifrar PDFs protegidos con contraseña en memoria. Todo se
 ejecuta en tu propio ordenador — ver [Privacidad](#privacidad) más abajo.
 
-Se puede usar de tres formas:
+Se puede usar de dos formas:
 
-- **Una interfaz gráfica** — doble clic para abrir, elige un PDF, pulsa convertir.
-  Sin necesidad de terminal.
 - **Una herramienta de línea de comandos**, para scripts: `markwright informe.pdf`.
 - **Un menú interactivo de terminal**, para elegir un archivo sin escribir la ruta
-  completa: `markwright menu`.
+  completa ni recordar ninguna opción: `markwright menu` (o simplemente
+  `markwright`, sin argumentos).
 
-La interfaz (GUI y CLI) está disponible en inglés y español; puedes cambiarla,
-junto con el tema claro/oscuro y el tamaño de letra, desde el icono de engranaje
-de la GUI.
+> **Sobre la interfaz gráfica de escritorio:** una versión anterior con interfaz
+> gráfica quedó aparcada en la rama
+> [`gui-desktop`](https://github.com/isa-bos-dev/markwright/tree/gui-desktop)
+> (tal cual, sin mantenimiento activo), para centrar el esfuerzo en la fidelidad
+> de la conversión y en una CLI sólida. Una interfaz de escritorio más completa y
+> cuidada es un objetivo futuro, cuando la herramienta soporte más formatos y
+> funcionalidades — ver la sección "Purpose" de `docs/constitution.md` para el
+> razonamiento completo (en inglés, documentación técnica interna).
 
 ## Pruébalo ahora (desde el código fuente)
 
@@ -62,9 +65,9 @@ uv sync
 Después, cualquiera de estos:
 
 ```bash
-uv run markwright                  # abre la interfaz gráfica
+uv run markwright                  # menú interactivo: elige un PDF de una lista
 uv run markwright informe.pdf      # convierte un archivo desde la línea de comandos
-uv run markwright menu             # menú interactivo: elige un PDF de una lista
+uv run markwright menu             # el mismo menú interactivo, explícito
 uv run markwright --help           # todas las opciones de la CLI (idioma, ruta de salida...)
 ```
 
@@ -72,9 +75,8 @@ La primera conversión descarga los modelos de OCR/diseño que necesita (unos
 cientos de MB) desde sus fuentes oficiales. A partir de ahí, cada conversión se
 ejecuta completamente sin conexión.
 
-Desarrollado y probado sobre todo en Windows; el tema visual de la GUI está
-pensado específicamente para Windows 11. El código tiene alternativas para abrir
-la carpeta de resultado en macOS/Linux, pero esas plataformas aún no se han
+Desarrollado y probado sobre todo en Windows. El código tiene alternativas para
+abrir la carpeta de resultado en macOS/Linux, pero esas plataformas aún no se han
 verificado.
 
 ## Privacidad

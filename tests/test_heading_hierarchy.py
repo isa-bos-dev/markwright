@@ -60,25 +60,51 @@ def test_sibling_numbered_headings_get_different_levels_from_a_flat_default() ->
     assert [_level(doc, i) for i in range(3)] == [1, 2, 1]
 
 
-# --- Headings without usable numbering are left untouched ---
+# --- The first heading is the document's title; later unnumbered headings
+# --- are pushed to a fixed, deeply-nested level instead of competing with
+# --- real chapter/section headings (SYN-FR-002).
 
 
-def test_heading_without_any_numbering_keeps_its_original_level() -> None:
+def test_the_first_heading_in_the_document_becomes_the_title_at_level_zero() -> None:
     doc = DoclingDocument(name="test")
-    doc.add_text(label=DocItemLabel.SECTION_HEADER, text="Resumen")
+    doc.add_text(label=DocItemLabel.SECTION_HEADER, text="Fundamentos de data science")
 
     fix_heading_levels(doc)
 
-    assert _level(doc) == 1
+    assert _level(doc) == 0  # "#"
 
 
-def test_heading_that_is_only_a_number_with_nothing_after_it_keeps_its_original_level() -> None:
+def test_a_number_only_heading_as_the_first_heading_also_becomes_the_title() -> None:
     doc = DoclingDocument(name="test")
     doc.add_text(label=DocItemLabel.SECTION_HEADER, text="2024")
 
     fix_heading_levels(doc)
 
-    assert _level(doc) == 1
+    assert _level(doc) == 0
+
+
+def test_an_unnumbered_heading_after_the_title_is_pushed_to_a_fixed_deep_level() -> None:
+    doc = DoclingDocument(name="test")
+    doc.add_text(label=DocItemLabel.SECTION_HEADER, text="Fundamentos de data science")
+    doc.add_text(label=DocItemLabel.SECTION_HEADER, text="1.La sociedad de la información")
+    doc.add_text(label=DocItemLabel.SECTION_HEADER, text="Ejemplo")
+
+    fix_heading_levels(doc)
+
+    assert [_level(doc, i) for i in range(3)] == [0, 1, 3]  # "#", "##", "####"
+
+
+def test_an_unnumbered_heading_that_comes_first_because_the_document_opens_numbered() -> None:
+    # If the very first heading is already numbered, there's no separate
+    # title to promote — it just gets its own numbered depth as usual, and
+    # any *later* unnumbered heading still goes to the fixed deep level.
+    doc = DoclingDocument(name="test")
+    doc.add_text(label=DocItemLabel.SECTION_HEADER, text="1.Primer capítulo")
+    doc.add_text(label=DocItemLabel.SECTION_HEADER, text="Ejemplo")
+
+    fix_heading_levels(doc)
+
+    assert [_level(doc, i) for i in range(2)] == [1, 3]
 
 
 def test_deep_numbering_is_capped_so_markdown_never_exceeds_six_hashes() -> None:

@@ -71,7 +71,9 @@ def test_headings_and_lists_are_preserved_as_markdown_syntax(
     result_path = convert_pdf_to_md(input_path)
 
     markdown = result_path.read_text(encoding="utf-8")
-    assert "## My Heading" in markdown
+    # The only heading in the document, unnumbered, so it's treated as the
+    # document's own title (SYN-FR-002) rather than a flat docling default.
+    assert "# My Heading" in markdown
     assert "- item one" in markdown
     assert "- item two" in markdown
 
@@ -591,17 +593,17 @@ def test_corrupt_pdf_content_detected_before_docling_raises_corrupt_file_error(
     mock_docling_convert.assert_not_called()
 
 
-def _partial_write_then_fail(error: OSError) -> Callable[..., None]:
-    """A save_as_markdown stand-in that leaves partial output behind and then fails."""
+_REAL_WRITE_TEXT = Path.write_text
 
-    def save(filename, artifacts_dir=None, **kwargs) -> None:
-        markdown = Path(filename)
-        markdown.write_text("partial")
-        if artifacts_dir is not None:
-            (markdown.parent / artifacts_dir).mkdir()
+
+def _partial_write_then_fail(error: OSError) -> Callable[..., int]:
+    """A Path.write_text stand-in that leaves partial output behind and then fails."""
+
+    def write_text(self: Path, data: str, encoding: str | None = None, **kwargs: object) -> int:
+        _REAL_WRITE_TEXT(self, "partial", encoding=encoding)
         raise error
 
-    return save
+    return write_text
 
 
 def test_write_failure_raises_output_write_error_and_removes_the_partial_output(
@@ -612,8 +614,7 @@ def test_write_failure_raises_output_write_error_and_removes_the_partial_output(
 ) -> None:
     input_path = plain_pdf_factory()
     mock_docling_convert.return_value = conversion_result_factory(with_picture=True)
-    failing_save = _partial_write_then_fail(OSError("disk full"))
-    monkeypatch.setattr(DoclingDocument, "save_as_markdown", MagicMock(side_effect=failing_save))
+    monkeypatch.setattr(Path, "write_text", _partial_write_then_fail(OSError("disk full")))
 
     with pytest.raises(OutputWriteError):
         convert_pdf_to_md(input_path)
@@ -645,8 +646,7 @@ def test_output_write_error_is_raised_even_if_cleanup_itself_fails(
     input_path = plain_pdf_factory()
     mock_docling_convert.return_value = conversion_result_factory(with_picture=True)
     original_cause = OSError("disk full")
-    failing_save = _partial_write_then_fail(original_cause)
-    monkeypatch.setattr(DoclingDocument, "save_as_markdown", MagicMock(side_effect=failing_save))
+    monkeypatch.setattr(Path, "write_text", _partial_write_then_fail(original_cause))
     monkeypatch.setattr(Path, "unlink", MagicMock(side_effect=OSError("cleanup failed")))
     monkeypatch.setattr(shutil, "rmtree", MagicMock(side_effect=OSError("cleanup failed")))
 

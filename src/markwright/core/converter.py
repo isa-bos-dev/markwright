@@ -9,6 +9,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from markwright.core.captions import italicize_captions
+from markwright.core.code_blocks import apply_code_fence_languages, format_code_blocks
 from markwright.core.exceptions import (
     CorruptFileError,
     InvalidPasswordError,
@@ -17,9 +19,11 @@ from markwright.core.exceptions import (
 )
 from markwright.core.footnotes import relocate_footnotes
 from markwright.core.heading_hierarchy import fix_heading_levels
+from markwright.core.list_markers import fix_broken_list_markers
 from markwright.core.models import find_models_dir
 from markwright.core.paths import OutputPaths, resolve_output_paths
 from markwright.core.pdf_source import prepare_docling_source
+from markwright.core.text_sanitization import fix_mangled_spaces
 
 if TYPE_CHECKING:
     # Type-only: importing docling at runtime costs ~5 s (it loads PyTorch).
@@ -91,11 +95,18 @@ def convert_pdf_to_md(
     if _is_partial_success(result):
         _notify(on_progress, ConversionStage.PARTIAL_SUCCESS, _classify_partial_success(result))
 
+    # fix_broken_list_markers must run before fix_mangled_spaces: it still
+    # needs to see the raw U+FFFF to recognize a marker docling failed to
+    # split out (see list_markers.py).
+    fix_broken_list_markers(result.document)
+    fix_mangled_spaces(result.document)
     fix_heading_levels(result.document)
     relocate_footnotes(result.document)
+    italicize_captions(result.document)
+    code_fence_languages = format_code_blocks(result.document)
 
     _notify(on_progress, ConversionStage.WRITING)
-    _write_markdown(result.document, output_paths)
+    _write_markdown(result.document, output_paths, code_fence_languages)
 
     _notify(on_progress, ConversionStage.DONE)
     return output_paths.markdown_path
@@ -192,26 +203,46 @@ def _is_partial_success(result: ConversionResult) -> bool:
     return result.status == ConversionStatus.PARTIAL_SUCCESS
 
 
-def _write_markdown(document: DoclingDocument, output_paths: OutputPaths) -> None:
-    from docling_core.types.doc.base import ImageRefMode
-    from docling_core.types.doc.document import CaptionPlacement
+def _write_markdown(
+    document: DoclingDocument, output_paths: OutputPaths, code_fence_languages: list[str]
+) -> None:
+    # document.save_as_markdown()'s own kwargs don't expose
+    # orig_list_item_marker_mode (needed so a "1)"/"a)" list renders as a
+    # clean "1." instead of docling's default "- 1)" double marker) — so
+    # this replicates save_as_markdown's own steps by hand, using the
+    # lower-level MarkdownDocSerializer for full control over MarkdownParams.
+    # _get_output_paths/_make_copy_with_refmode are private docling_core
+    # methods; relied on here because they're what actually copies the
+    # referenced images to artifacts_dir, which a reimplementation would
+    # otherwise have to duplicate.
+    from docling_core.transforms.serializer.markdown import (
+        MarkdownDocSerializer,
+        MarkdownParams,
+        OrigListItemMarkerMode,
+    )
+    from docling_core.types.doc.base import CaptionPlacement, ImageRefMode
 
     has_pictures = bool(document.pictures)
+    image_mode = ImageRefMode.REFERENCED if has_pictures else ImageRefMode.PLACEHOLDER
     try:
+        artifacts_dir, reference_path = document._get_output_paths(
+            output_paths.markdown_path,
+            Path(output_paths.images_dir.name) if has_pictures else None,
+        )
         if has_pictures:
-            document.save_as_markdown(
-                output_paths.markdown_path,
-                artifacts_dir=Path(output_paths.images_dir.name),
-                image_mode=ImageRefMode.REFERENCED,
-                caption_placement=CaptionPlacement.LAYOUT,
-                escape_html=False,
-            )
-        else:
-            document.save_as_markdown(
-                output_paths.markdown_path,
-                caption_placement=CaptionPlacement.LAYOUT,
-                escape_html=False,
-            )
+            artifacts_dir.mkdir(parents=True, exist_ok=True)
+        export_document = document._make_copy_with_refmode(
+            artifacts_dir, image_mode, page_no=None, reference_path=reference_path
+        )
+        params = MarkdownParams(
+            caption_placement=CaptionPlacement.LAYOUT,
+            escape_html=False,
+            orig_list_item_marker_mode=OrigListItemMarkerMode.NEVER,
+            image_mode=image_mode,
+        )
+        markdown = MarkdownDocSerializer(doc=export_document, params=params).serialize().text
+        markdown = apply_code_fence_languages(markdown, code_fence_languages)
+        output_paths.markdown_path.write_text(markdown, encoding="utf-8")
     except OSError as exc:
         _cleanup_partial_output(output_paths)
         raise OutputWriteError(output_paths.markdown_path) from exc

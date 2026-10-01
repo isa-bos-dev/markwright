@@ -14,11 +14,6 @@ if TYPE_CHECKING:
 # "(N)" numbering, but loses its position relative to what it explains).
 _FOOTNOTE_START = re.compile(r"^\((\d{1,3})\)\s")
 
-# An isolated digit token (the superscript marker, flattened to plain text by
-# PDF extraction) glued to neither neighbor: "... común 1 ." — word, space,
-# digit, optional space, sentence punctuation.
-_INLINE_MARKER = re.compile(r"(?<=\S)\s(\d{1,3})\s*([.,;:])")
-
 
 def relocate_footnotes(document: DoclingDocument) -> None:
     """Move a footnote-shaped paragraph to sit right after what it explains.
@@ -26,45 +21,68 @@ def relocate_footnotes(document: DoclingDocument) -> None:
     Some PDFs lay a footnote out as a right-margin note rather than at the
     bottom of the page; docling extracts it as an ordinary paragraph, and the
     margin column's reading order often places that paragraph well after the
-    text it explains (FID-FR-003). This pairs a "(N) ..." paragraph with the
-    paragraph on the same page containing an isolated "N" marker, rewrites
-    that marker as ``<sup>N</sup>``, and relocates the footnote paragraph to
-    immediately follow its match. A footnote with no matching marker on its
-    page is left exactly where docling put it.
+    text it explains (FID-FR-003). This pairs each "(N) ..." paragraph with
+    its inline marker and relocates the paragraph to immediately follow it.
+
+    The marker itself is often glued straight onto the preceding word with no
+    space (PDF extraction drops the superscript's visual gap), so a lone digit
+    is too weak a signal on its own — "10" shows up in page numbers, dates,
+    units. The real safeguard is sequential order: footnote markers are
+    numbered 1, 2, 3... and appear in that order through the document, so
+    once marker N is found, marker N+1 is only looked for *after* it. A
+    footnote whose marker can't be found in order is left exactly where
+    docling put it, rather than guessed at.
     """
     candidates = [item for item in document.texts if item.label == DocItemLabel.TEXT]
-    footnote_matches = [
-        (item, match)
+    footnotes = [
+        (item, match.group(1))
         for item in candidates
         if (match := _FOOTNOTE_START.match(item.text)) is not None
     ]
+    # A footnote paragraph itself is never a valid anchor for another one
+    # (e.g. a citation's own "vol. 31" shouldn't be mistaken for a marker).
+    anchor_pool = [item for item in candidates if _FOOTNOTE_START.match(item.text) is None]
 
-    for footnote, match in footnote_matches:
-        number = match.group(1)
-        anchor = _find_anchor(candidates, footnote, number)
-        if anchor is None:
+    search_start = 0
+    for footnote, number in footnotes:
+        found = _find_anchor(anchor_pool, number, search_start)
+        if found is None:
             continue
-        marker = re.compile(rf"(?<=\S)\s{re.escape(number)}\s*([.,;:])")
-        anchor.text = marker.sub(rf"<sup>{number}</sup> \1", anchor.text, count=1)
+        anchor, index = found
+        _mark_superscript(anchor, number)
         _move_after(document, item=footnote, anchor=anchor)
+        search_start = index + 1
 
 
-def _find_anchor(candidates: list[TextItem], footnote: TextItem, number: str) -> TextItem | None:
-    pattern = re.compile(rf"(?<=\S)\s{re.escape(number)}\s*[.,;:]")
-    for item in candidates:
-        if item is footnote:
-            continue
-        if pattern.search(item.text) and _same_page_or_unconstrained(footnote, item):
-            return item
+def _find_anchor(
+    anchor_pool: list[TextItem], number: str, search_start: int
+) -> tuple[TextItem, int] | None:
+    pattern = _marker_pattern(number)
+    for index in range(search_start, len(anchor_pool)):
+        item = anchor_pool[index]
+        match = pattern.search(item.text)
+        # A marker never opens its own paragraph — that shape belongs to a
+        # numbered list item or heading ("1. Primer punto"), not a reference
+        # sitting mid-sentence.
+        if match is not None and match.start() > 0:
+            return item, index
     return None
 
 
-def _same_page_or_unconstrained(a: TextItem, b: TextItem) -> bool:
-    pages_a = {p.page_no for p in a.prov}
-    pages_b = {p.page_no for p in b.prov}
-    if not pages_a or not pages_b:
-        return True
-    return bool(pages_a & pages_b)
+def _marker_pattern(number: str) -> re.Pattern[str]:
+    # An isolated digit token: optionally glued to the previous word (PDF
+    # extraction usually drops the space a superscript had), bounded by
+    # non-digits on both sides so "1" doesn't match inside "10" or "2014".
+    # It may NOT be glued — directly, or via a hyphen — to a following word
+    # ("3D", "10mg", "3-tuplas" are units/compound terms), nor come right
+    # after a literal "^" (plain-text exponent notation, "10^3"). All three
+    # found against the real sample PDF, wrongly matched as markers before
+    # these guards.
+    return re.compile(rf"(?<!\^)[ \t]?(?<!\d){re.escape(number)}(?!-?[\wÀ-ÿ])")
+
+
+def _mark_superscript(item: TextItem, number: str) -> None:
+    item.text = _marker_pattern(number).sub(f"<sup>{number}</sup>", item.text, count=1)
 
 
 def _move_after(document: DoclingDocument, *, item: TextItem, anchor: TextItem) -> None:

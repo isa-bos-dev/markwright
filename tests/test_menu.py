@@ -216,19 +216,23 @@ def test_choosing_quit_immediately_converts_nothing(
     mock_convert.assert_not_called()
 
 
-def test_choosing_help_shows_help_text_and_returns_to_the_menu(
+def test_choosing_help_shows_the_real_cli_help_and_returns_to_the_menu(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     mock_convert: MagicMock,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    """It must show real, actionable help in place, not point elsewhere
+    unreachable from inside the already-running interactive session."""
     monkeypatch.chdir(tmp_path)
     _answer_prompts(monkeypatch, "2", "4")  # help -> quit
 
     exit_code = run_menu([])
 
+    help_output = capsys.readouterr().out
     assert exit_code == EXIT_SUCCESS
-    assert "markwright --help" in capsys.readouterr().out
+    assert "markwright report.pdf" in help_output  # a real usage example, not a pointer
+    assert "--password" in help_output
     mock_convert.assert_not_called()
 
 

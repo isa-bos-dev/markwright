@@ -12,6 +12,7 @@ from markwright.cli.cli import (
     EXIT_CODE_BY_EXCEPTION,
     EXIT_SUCCESS,
     EXIT_UNEXPECTED_ERROR,
+    build_parser,
     print_domain_error,
     print_progress,
     print_unexpected_error,
@@ -150,8 +151,11 @@ def run_menu(argv: Sequence[str] | None = None) -> int:
             if choice == _MENU_QUIT:
                 return exit_code
             if choice == _MENU_HELP:
+                # Reuses the CLI's own --help text (single source of truth):
+                # telling the user to go run `markwright --help` from inside
+                # this already-running interactive session would be useless.
                 console.print()
-                console.print(t("menu.help_text", lang))
+                console.print(build_parser().format_help(), highlight=False)
             elif choice == _MENU_LANGUAGE:
                 lang = next(code for code in SUPPORTED_LANGUAGES if code != lang)
             elif choice == _MENU_CONVERT:

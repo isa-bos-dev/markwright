@@ -66,12 +66,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "menu.option_language": "Switch language ({language})",
         "menu.option_quit": "Quit",
         "menu.prompt_choice": "Choose an option",
-        "menu.help_text": (
-            "Markwright converts a PDF to Markdown, preserving tables, headings, "
-            "lists and images. For scripting, run `markwright <file.pdf>` "
-            "directly from a terminal instead — see `markwright --help` for "
-            "every option."
-        ),
     },
     "es": {
         "error.unsupported_file": (
@@ -135,12 +129,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "menu.option_language": "Cambiar idioma ({language})",
         "menu.option_quit": "Salir",
         "menu.prompt_choice": "Elige una opción",
-        "menu.help_text": (
-            "Markwright convierte un PDF a Markdown, conservando tablas, "
-            "encabezados, listas e imágenes. Para scripts, ejecuta "
-            "`markwright <archivo.pdf>` directamente desde una terminal — "
-            "consulta `markwright --help` para ver todas las opciones."
-        ),
     },
 }
 

@@ -90,9 +90,9 @@ def test_numbered_headings_get_a_deeper_level_than_doclings_flat_default(
 
     result_path = convert_pdf_to_md(input_path)
 
-    markdown = result_path.read_text(encoding="utf-8")
-    assert "# 1.Primera sección" in markdown
-    assert "## 1.1. Subsección" in markdown
+    lines = result_path.read_text(encoding="utf-8").splitlines()
+    assert "## 1.Primera sección" in lines
+    assert "### 1.1. Subsección" in lines
 
 
 def test_image_caption_is_placed_after_the_image_when_it_sits_below_it_in_the_pdf(
@@ -126,6 +126,28 @@ def test_image_caption_is_placed_after_the_image_when_it_sits_below_it_in_the_pd
     image_index = markdown.index("![")
     caption_index = markdown.index("Figura 1: pie debajo de la imagen")
     assert caption_index > image_index
+
+
+def test_a_footnote_is_relocated_next_to_its_marker_with_an_unescaped_sup_tag(
+    plain_pdf_factory: Callable[..., Path],
+    mock_docling_convert: MagicMock,
+) -> None:
+    document = DoclingDocument(name="test")
+    document.add_text(label=DocItemLabel.TEXT, text="Un concepto importante en común 1 .")
+    document.add_text(label=DocItemLabel.TEXT, text="Un párrafo intermedio sin relación.")
+    document.add_text(label=DocItemLabel.TEXT, text="(1) Fuente citada en la nota.")
+    input_path = plain_pdf_factory()
+    mock_docling_convert.return_value = SimpleNamespace(
+        status=ConversionStatus.SUCCESS, document=document, errors=[]
+    )
+
+    result_path = convert_pdf_to_md(input_path)
+
+    markdown = result_path.read_text(encoding="utf-8")
+    assert "común<sup>1</sup> ." in markdown
+    assert "&lt;sup&gt;" not in markdown
+    assert markdown.index("común<sup>1</sup>") < markdown.index("(1) Fuente citada")
+    assert markdown.index("(1) Fuente citada") < markdown.index("párrafo intermedio")
 
 
 def test_on_progress_is_called_for_each_stage_in_order(

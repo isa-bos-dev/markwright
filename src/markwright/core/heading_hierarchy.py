@@ -25,9 +25,11 @@ def fix_heading_levels(document: DoclingDocument) -> None:
     docling classifies "1." and "3.1." headings correctly as section headers,
     but gives every one of them the same flat level — so Markwright's export
     collapses a real hierarchy into same-depth ``##`` headings. This computes
-    the real depth from the heading's own text instead. Headings with no
-    leading number, or where the number isn't followed by real heading text,
-    are left exactly as docling classified them (FID-FR-002, see Non-Goals in
+    the real depth from the heading's own text instead, offset by one level
+    so a top-level "1." section nests under the document's own (unnumbered)
+    title instead of competing with it for ``#``. Headings with no leading
+    number, or where the number isn't followed by real heading text, are left
+    exactly as docling classified them (FID-FR-002, see Non-Goals in
     docs/specs/011-conversion-fidelity/specification.md).
     """
     for item in document.texts:
@@ -36,7 +38,7 @@ def fix_heading_levels(document: DoclingDocument) -> None:
         depth = _numbering_depth(item.text)
         if depth is None:
             continue
-        item.level = min(depth, _MAX_LEVEL)
+        item.level = min(depth + 1, _MAX_LEVEL)
 
 
 def _numbering_depth(text: str) -> int | None:

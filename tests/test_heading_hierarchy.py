@@ -13,22 +13,22 @@ def _level(doc: DoclingDocument, index: int = 0) -> int:
 # --- Numbered headings get their depth from their own numbering ---
 
 
-def test_top_level_numbered_heading_with_no_space_after_the_dot_becomes_level_zero() -> None:
+def test_top_level_numbered_heading_with_no_space_after_the_dot_becomes_level_one() -> None:
     doc = DoclingDocument(name="test")
     doc.add_text(label=DocItemLabel.SECTION_HEADER, text="1.La sociedad de la información")
 
     fix_heading_levels(doc)
 
-    assert _level(doc) == 0
+    assert _level(doc) == 1  # "##" — nests under the document's own (unnumbered) title
 
 
-def test_two_component_numbered_heading_with_space_after_the_dot_becomes_level_one() -> None:
+def test_two_component_numbered_heading_with_space_after_the_dot_becomes_level_two() -> None:
     doc = DoclingDocument(name="test")
     doc.add_text(label=DocItemLabel.SECTION_HEADER, text="3.1. Datos simples")
 
     fix_heading_levels(doc)
 
-    assert _level(doc) == 1
+    assert _level(doc) == 2
 
 
 def test_numbered_heading_followed_by_an_inverted_question_mark_is_still_detected() -> None:
@@ -37,16 +37,16 @@ def test_numbered_heading_followed_by_an_inverted_question_mark_is_still_detecte
 
     fix_heading_levels(doc)
 
-    assert _level(doc) == 0
+    assert _level(doc) == 1
 
 
-def test_three_component_numbered_heading_becomes_level_two() -> None:
+def test_three_component_numbered_heading_becomes_level_three() -> None:
     doc = DoclingDocument(name="test")
     doc.add_text(label=DocItemLabel.SECTION_HEADER, text="4.2.3 Sub-sub-sección")
 
     fix_heading_levels(doc)
 
-    assert _level(doc) == 2
+    assert _level(doc) == 3
 
 
 def test_sibling_numbered_headings_get_different_levels_from_a_flat_default() -> None:
@@ -57,7 +57,7 @@ def test_sibling_numbered_headings_get_different_levels_from_a_flat_default() ->
 
     fix_heading_levels(doc)
 
-    assert [_level(doc, i) for i in range(3)] == [0, 1, 0]
+    assert [_level(doc, i) for i in range(3)] == [1, 2, 1]
 
 
 # --- Headings without usable numbering are left untouched ---

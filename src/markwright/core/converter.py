@@ -15,6 +15,7 @@ from markwright.core.exceptions import (
     OutputWriteError,
     UnsupportedFileError,
 )
+from markwright.core.footnotes import relocate_footnotes
 from markwright.core.heading_hierarchy import fix_heading_levels
 from markwright.core.models import find_models_dir
 from markwright.core.paths import OutputPaths, resolve_output_paths
@@ -91,6 +92,7 @@ def convert_pdf_to_md(
         _notify(on_progress, ConversionStage.PARTIAL_SUCCESS, _classify_partial_success(result))
 
     fix_heading_levels(result.document)
+    relocate_footnotes(result.document)
 
     _notify(on_progress, ConversionStage.WRITING)
     _write_markdown(result.document, output_paths)
@@ -202,10 +204,13 @@ def _write_markdown(document: DoclingDocument, output_paths: OutputPaths) -> Non
                 artifacts_dir=Path(output_paths.images_dir.name),
                 image_mode=ImageRefMode.REFERENCED,
                 caption_placement=CaptionPlacement.LAYOUT,
+                escape_html=False,
             )
         else:
             document.save_as_markdown(
-                output_paths.markdown_path, caption_placement=CaptionPlacement.LAYOUT
+                output_paths.markdown_path,
+                caption_placement=CaptionPlacement.LAYOUT,
+                escape_html=False,
             )
     except OSError as exc:
         _cleanup_partial_output(output_paths)

@@ -15,6 +15,7 @@ from markwright.core.exceptions import (
     OutputWriteError,
     UnsupportedFileError,
 )
+from markwright.core.heading_hierarchy import fix_heading_levels
 from markwright.core.models import find_models_dir
 from markwright.core.paths import OutputPaths, resolve_output_paths
 from markwright.core.pdf_source import prepare_docling_source
@@ -88,6 +89,8 @@ def convert_pdf_to_md(
     result = _convert(source, models_dir, input_path)
     if _is_partial_success(result):
         _notify(on_progress, ConversionStage.PARTIAL_SUCCESS, _classify_partial_success(result))
+
+    fix_heading_levels(result.document)
 
     _notify(on_progress, ConversionStage.WRITING)
     _write_markdown(result.document, output_paths)
@@ -189,6 +192,7 @@ def _is_partial_success(result: ConversionResult) -> bool:
 
 def _write_markdown(document: DoclingDocument, output_paths: OutputPaths) -> None:
     from docling_core.types.doc.base import ImageRefMode
+    from docling_core.types.doc.document import CaptionPlacement
 
     has_pictures = bool(document.pictures)
     try:
@@ -197,9 +201,12 @@ def _write_markdown(document: DoclingDocument, output_paths: OutputPaths) -> Non
                 output_paths.markdown_path,
                 artifacts_dir=Path(output_paths.images_dir.name),
                 image_mode=ImageRefMode.REFERENCED,
+                caption_placement=CaptionPlacement.LAYOUT,
             )
         else:
-            document.save_as_markdown(output_paths.markdown_path)
+            document.save_as_markdown(
+                output_paths.markdown_path, caption_placement=CaptionPlacement.LAYOUT
+            )
     except OSError as exc:
         _cleanup_partial_output(output_paths)
         raise OutputWriteError(output_paths.markdown_path) from exc

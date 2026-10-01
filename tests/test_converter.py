@@ -10,6 +10,7 @@ import pytest
 from docling.datamodel.base_models import ConversionStatus, InputFormat
 from docling.datamodel.document import ErrorItem, FailureCategory
 from docling.datamodel.pipeline_options import EasyOcrOptions
+from docling_core.types.doc import BoundingBox, DocItemLabel, ImageRef, ProvenanceItem
 from docling_core.types.doc.document import DoclingDocument
 
 from markwright.core.converter import ConversionStage, ConversionWarning, convert_pdf_to_md
@@ -73,6 +74,58 @@ def test_headings_and_lists_are_preserved_as_markdown_syntax(
     assert "## My Heading" in markdown
     assert "- item one" in markdown
     assert "- item two" in markdown
+
+
+def test_numbered_headings_get_a_deeper_level_than_doclings_flat_default(
+    plain_pdf_factory: Callable[..., Path],
+    mock_docling_convert: MagicMock,
+) -> None:
+    document = DoclingDocument(name="test")
+    document.add_text(label=DocItemLabel.SECTION_HEADER, text="1.Primera sección")
+    document.add_text(label=DocItemLabel.SECTION_HEADER, text="1.1. Subsección")
+    input_path = plain_pdf_factory()
+    mock_docling_convert.return_value = SimpleNamespace(
+        status=ConversionStatus.SUCCESS, document=document, errors=[]
+    )
+
+    result_path = convert_pdf_to_md(input_path)
+
+    markdown = result_path.read_text(encoding="utf-8")
+    assert "# 1.Primera sección" in markdown
+    assert "## 1.1. Subsección" in markdown
+
+
+def test_image_caption_is_placed_after_the_image_when_it_sits_below_it_in_the_pdf(
+    plain_pdf_factory: Callable[..., Path],
+    mock_docling_convert: MagicMock,
+) -> None:
+    from PIL import Image
+
+    document = DoclingDocument(name="test")
+    image = ImageRef.from_pil(Image.new("RGB", (4, 4), color="red"), dpi=72)
+    picture = document.add_picture(
+        image=image,
+        prov=ProvenanceItem(page_no=1, bbox=BoundingBox(l=0, t=100, r=200, b=200), charspan=(0, 0)),
+    )
+    caption = document.add_text(
+        label=DocItemLabel.CAPTION,
+        text="Figura 1: pie debajo de la imagen",
+        prov=ProvenanceItem(
+            page_no=1, bbox=BoundingBox(l=0, t=210, r=200, b=220), charspan=(0, 30)
+        ),
+    )
+    picture.captions.append(caption.get_ref())
+    input_path = plain_pdf_factory()
+    mock_docling_convert.return_value = SimpleNamespace(
+        status=ConversionStatus.SUCCESS, document=document, errors=[]
+    )
+
+    result_path = convert_pdf_to_md(input_path)
+
+    markdown = result_path.read_text(encoding="utf-8")
+    image_index = markdown.index("![")
+    caption_index = markdown.index("Figura 1: pie debajo de la imagen")
+    assert caption_index > image_index
 
 
 def test_on_progress_is_called_for_each_stage_in_order(

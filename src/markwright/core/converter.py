@@ -20,6 +20,7 @@ from markwright.core.exceptions import (
 from markwright.core.footnotes import relocate_footnotes
 from markwright.core.heading_hierarchy import fix_heading_levels
 from markwright.core.list_markers import fix_broken_list_markers
+from markwright.core.margin_blocks import relocate_margin_blocks
 from markwright.core.models import find_models_dir
 from markwright.core.paths import OutputPaths, resolve_output_paths
 from markwright.core.pdf_source import prepare_docling_source
@@ -102,6 +103,7 @@ def convert_pdf_to_md(
     fix_mangled_spaces(result.document)
     fix_heading_levels(result.document)
     relocate_footnotes(result.document)
+    relocate_margin_blocks(result.document)
     italicize_captions(result.document)
     code_fence_languages = format_code_blocks(result.document)
 

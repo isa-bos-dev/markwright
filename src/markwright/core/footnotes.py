@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 from docling_core.types.doc import DocItemLabel
 
+from markwright.core.document_tree import move_item_after
+
 if TYPE_CHECKING:
     from docling_core.types.doc.document import DoclingDocument
     from docling_core.types.doc.items.text import TextItem
@@ -50,7 +52,7 @@ def relocate_footnotes(document: DoclingDocument) -> None:
             continue
         anchor, index = found
         _mark_superscript(anchor, number)
-        _move_after(document, item=footnote, anchor=anchor)
+        move_item_after(document, item=footnote, anchor=anchor)
         search_start = index + 1
 
 
@@ -83,16 +85,3 @@ def _marker_pattern(number: str) -> re.Pattern[str]:
 
 def _mark_superscript(item: TextItem, number: str) -> None:
     item.text = _marker_pattern(number).sub(f"<sup>{number}</sup>", item.text, count=1)
-
-
-def _move_after(document: DoclingDocument, *, item: TextItem, anchor: TextItem) -> None:
-    # .parent is always set for an item docling actually placed in the body
-    # tree; the None case in its type is for a detached node, which a real
-    # converted document never produces — skip rather than crash if it ever did.
-    if item.parent is None or anchor.parent is None:
-        return
-    old_parent = item.parent.resolve(document)
-    old_parent.children.remove(item.get_ref())
-    new_parent = anchor.parent.resolve(document)
-    index = new_parent.children.index(anchor.get_ref())
-    new_parent.children.insert(index + 1, item.get_ref())

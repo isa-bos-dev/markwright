@@ -190,6 +190,11 @@ def _build_converter(models_dir: Path | None) -> DocumentConverter:
     # Force EasyOCR explicitly: docling's "auto" OCR mode may otherwise pick
     # RapidOCR, whose models are hosted on ModelScope rather than GitHub.
     pipeline_options.ocr_options = EasyOcrOptions()
+    # Without this, a formula renders as the useless placeholder
+    # "<!-- formula-not-decoded -->" instead of real LaTeX (needs the
+    # CodeFormulaV2 model under models/, downloaded and checksum-verified
+    # separately — not fetched automatically).
+    pipeline_options.do_formula_enrichment = True
     if models_dir is not None:
         pipeline_options.artifacts_path = models_dir
     return DocumentConverter(

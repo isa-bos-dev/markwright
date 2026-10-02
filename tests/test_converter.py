@@ -339,6 +339,7 @@ def test_pipeline_uses_easyocr_and_generates_picture_images(
 
     assert isinstance(options.ocr_options, EasyOcrOptions)
     assert options.generate_picture_images is True
+    assert options.do_formula_enrichment is True
 
 
 def test_a_document_timeout_is_set_so_a_hostile_pdf_cannot_hang_forever(

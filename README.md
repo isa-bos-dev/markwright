@@ -39,13 +39,6 @@ You can use it two ways:
   path, or without remembering any flag: `markwright menu` (or just `markwright`
   with no arguments).
 
-> **About the desktop GUI:** an earlier graphical interface was parked on the
-> [`gui-desktop`](https://github.com/isa-bos-dev/markwright/tree/gui-desktop)
-> branch (untouched, not actively maintained) in favor of focusing on the
-> fidelity of the conversion itself and a solid CLI. A more complete, polished
-> desktop app is a future goal once the tool supports more formats and
-> features — see `docs/constitution.md`'s Purpose section for the full reasoning.
-
 ## Try it now (from source)
 
 Markwright doesn't have a packaged, downloadable executable yet (that's planned

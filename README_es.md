@@ -39,15 +39,6 @@ Se puede usar de dos formas:
   completa ni recordar ninguna opción: `markwright menu` (o simplemente
   `markwright`, sin argumentos).
 
-> **Sobre la interfaz gráfica de escritorio:** una versión anterior con interfaz
-> gráfica quedó aparcada en la rama
-> [`gui-desktop`](https://github.com/isa-bos-dev/markwright/tree/gui-desktop)
-> (tal cual, sin mantenimiento activo), para centrar el esfuerzo en la fidelidad
-> de la conversión y en una CLI sólida. Una interfaz de escritorio más completa y
-> cuidada es un objetivo futuro, cuando la herramienta soporte más formatos y
-> funcionalidades — ver la sección "Purpose" de `docs/constitution.md` para el
-> razonamiento completo (en inglés, documentación técnica interna).
-
 ## Pruébalo ahora (desde el código fuente)
 
 Markwright todavía no tiene un ejecutable empaquetado para descargar (está

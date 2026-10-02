@@ -13,7 +13,7 @@ dependencies = [
     "docling>=2.130.0",
     # Imported directly (document model and image-reference mode); pinned so a
     # docling upgrade cannot silently drop it.
-    "docling-core>=2.98.0",
+    "docling-core>=2.99.0",
     # OCR engine. Declared explicitly because `docling` does not install it (only its
     # `easyocr` extra does) and it is forced over docling's default, RapidOCR, whose
     # models are hosted on ModelScope instead of GitHub.

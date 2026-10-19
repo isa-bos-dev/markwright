@@ -20,7 +20,7 @@ from markwright.core.exceptions import (
 )
 from markwright.core.footnotes import relocate_footnotes
 from markwright.core.heading_hierarchy import fix_heading_levels
-from markwright.core.list_markers import fix_broken_list_markers
+from markwright.core.list_markers import fix_broken_list_markers, keep_original_list_numbers
 from markwright.core.margin_blocks import relocate_margin_blocks
 from markwright.core.models import find_models_dir
 from markwright.core.paths import OutputPaths, resolve_output_paths
@@ -109,6 +109,7 @@ def convert_pdf_to_md(
     # needs to see the raw U+FFFF to recognize a marker docling failed to
     # split out (see list_markers.py).
     fix_broken_list_markers(result.document)
+    keep_original_list_numbers(result.document)
     # Before format_code_blocks: its JSON/XML detection should see the real
     # lines, and a block it reformats no longer matches the PDF's text layer.
     with open_region_reader(source) as read_region:

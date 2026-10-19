@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from docling_core.types.doc import ListItem
+from docling_core.types.doc import ListGroup, ListItem
 
 if TYPE_CHECKING:
     from docling_core.types.doc.document import DoclingDocument
@@ -36,3 +36,50 @@ def fix_broken_list_markers(document: DoclingDocument) -> None:
         item.marker = match.group(1)
         item.text = item.text[match.end() :]
         item.enumerated = True
+
+
+# A list number as the PDF printed it: "3.", "1.1." or "2)".
+_NUMBER = re.compile(r"\d+(?:\.\d+)*[.)]")
+# The same number left glued to the text when docling missed it as a marker
+# ("3.Disassemblers"); a letter must follow, so "3.5 GHz" is not taken for one.
+_GLUED_NUMBER = re.compile(r"^(\d+(?:\.\d+)*\.)\s*(?=[^\W\d_])")
+
+
+def keep_original_list_numbers(document: DoclingDocument) -> None:
+    """Keep a list's printed numbers when renumbering it 1, 2, 3 would lie.
+
+    The Markdown is written with docling's original-marker mode off, so every
+    enumerated list is renumbered from 1 by position (which is what turns a
+    "1)" list into a clean "1."). For a list whose own numbers don't follow
+    that sequence — a table of contents ("1.", "1.1.", "1.2.", "2."...) is
+    the typical case — the renumbering replaced the real section numbers with
+    wrong ones ("1.1. Reverse Engineering" came out as "2."). Such a list keeps
+    each number as the start of its item's text instead, as a bullet list.
+
+    Only a list where *every* item carries a number is touched: anything else
+    is not reliably a numbered list, and is left to the default rendering.
+    """
+    for group in document.groups:
+        if not isinstance(group, ListGroup) or not group.children:
+            continue
+        entries = [_printed_number(child.resolve(document)) for child in group.children]
+        numbered = [entry for entry in entries if entry is not None]
+        if len(numbered) < len(entries):
+            continue
+        if all(number[:-1] == str(position) for position, (_, number, _) in enumerate(numbered, 1)):
+            continue
+        for item, number, text in numbered:
+            item.text = f"{number} {text}"
+            item.marker = ""
+            item.enumerated = False
+
+
+def _printed_number(node: object) -> tuple[ListItem, str, str] | None:
+    """The item with its printed number and the text after it, if it has one."""
+    if not isinstance(node, ListItem):
+        return None
+    if _NUMBER.fullmatch(node.marker):
+        return node, node.marker, node.text
+    if not node.marker and (match := _GLUED_NUMBER.match(node.text)):
+        return node, match.group(1), node.text[match.end() :]
+    return None

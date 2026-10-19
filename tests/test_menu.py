@@ -115,6 +115,12 @@ def test_typed_text_is_returned_as_a_path() -> None:
     assert resolve_choice("C:/Users/me/report.pdf", []) == Path("C:/Users/me/report.pdf")
 
 
+def test_surrounding_quotes_from_copy_as_path_are_removed() -> None:
+    raw = '"C:/Users/me/my report.pdf"'
+
+    assert resolve_choice(raw, []) == Path("C:/Users/me/my report.pdf")
+
+
 # --- run_menu ---
 
 

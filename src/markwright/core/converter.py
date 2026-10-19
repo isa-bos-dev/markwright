@@ -23,7 +23,7 @@ from markwright.core.list_markers import fix_broken_list_markers
 from markwright.core.margin_blocks import relocate_margin_blocks
 from markwright.core.models import find_models_dir
 from markwright.core.paths import OutputPaths, resolve_output_paths
-from markwright.core.pdf_source import prepare_docling_source
+from markwright.core.pdf_source import count_pages, prepare_docling_source
 from markwright.core.text_sanitization import fix_mangled_spaces
 
 if TYPE_CHECKING:
@@ -42,10 +42,13 @@ _TRANSIENT_FAILURE_CATEGORIES = frozenset({"timeout", "capacity", "source_unavai
 # (SEC-TH-002): docling checks this between pages and reports the pages it
 # never got to with category "timeout" — already in _TRANSIENT_FAILURE_CATEGORIES
 # above, so it surfaces through the existing "you may want to try again" message
-# with no separate handling needed. Generous enough for a large real document
-# with OCR; still a finite bound instead of no limit at all.
-_DOCUMENT_TIMEOUT_SECONDS = 600.0
-
+# with no separate handling needed. The budget grows with the page count, so a
+# long real document is never cut short (a fixed 600 s once dropped the last
+# 21 pages of a 62-page PDF): the per-page allowance is several times the
+# slowest rate measured with OCR on CPU (~17 s/page with 4 threads). Still a
+# finite bound instead of no limit at all.
+_MIN_DOCUMENT_TIMEOUT_SECONDS = 600.0
+_TIMEOUT_SECONDS_PER_PAGE = 120.0
 
 # Thread counts the user set explicitly, which docling already reads on its own:
 # when any is present, the core-count default below must not override it.
@@ -94,10 +97,10 @@ def convert_pdf_to_md(
         input_path, Path(output_path) if output_path is not None else None
     )
     models_dir = _prepare_runtime()
-    source = _load_source(input_path, password)
+    source, page_count = _load_source(input_path, password)
 
     _notify(on_progress, ConversionStage.CONVERTING)
-    result = _convert(source, models_dir, input_path)
+    result = _convert(source, models_dir, input_path, _document_timeout(page_count))
     if _is_partial_success(result):
         _notify(on_progress, ConversionStage.PARTIAL_SUCCESS, _classify_partial_success(result))
 
@@ -133,10 +136,12 @@ def _require_pdf(input_path: Path) -> None:
         raise UnsupportedFileError(input_path)
 
 
-def _load_source(input_path: Path, password: str | None) -> Path | DocumentStream:
-    """Prepare what docling will read, mapping every failure to a domain error."""
+def _load_source(input_path: Path, password: str | None) -> tuple[Path | DocumentStream, int]:
+    """Prepare what docling will read and count its pages, mapping every failure
+    to a domain error."""
     try:
-        return prepare_docling_source(input_path, password)
+        source = prepare_docling_source(input_path, password)
+        return source, count_pages(source)
     except InvalidPasswordError:
         raise
     except FileNotFoundError as exc:
@@ -145,12 +150,20 @@ def _load_source(input_path: Path, password: str | None) -> Path | DocumentStrea
         raise CorruptFileError(input_path) from exc
 
 
+def _document_timeout(page_count: int) -> float:
+    return max(_MIN_DOCUMENT_TIMEOUT_SECONDS, page_count * _TIMEOUT_SECONDS_PER_PAGE)
+
+
 def _convert(
-    source: Path | DocumentStream, models_dir: Path | None, input_path: Path
+    source: Path | DocumentStream,
+    models_dir: Path | None,
+    input_path: Path,
+    document_timeout: float,
 ) -> ConversionResult:
     """Run docling on the prepared source, mapping any failure to a domain error."""
     try:
-        return _build_converter(models_dir).convert(source, raises_on_error=True)
+        converter = _build_converter(models_dir, document_timeout)
+        return converter.convert(source, raises_on_error=True)
     except Exception as exc:
         raise CorruptFileError(input_path) from exc
 
@@ -181,7 +194,7 @@ def _prepare_runtime() -> Path | None:
     return models_dir
 
 
-def _build_converter(models_dir: Path | None) -> DocumentConverter:
+def _build_converter(models_dir: Path | None, document_timeout: float) -> DocumentConverter:
     """Create the docling converter configured for Markwright.
 
     docling pulls in PyTorch, which takes ~5 s to import. Importing it here, on
@@ -194,7 +207,7 @@ def _build_converter(models_dir: Path | None) -> DocumentConverter:
 
     pipeline_options = PdfPipelineOptions()
     pipeline_options.generate_picture_images = True
-    pipeline_options.document_timeout = _DOCUMENT_TIMEOUT_SECONDS
+    pipeline_options.document_timeout = document_timeout
     # Force EasyOCR explicitly: docling's "auto" OCR mode may otherwise pick
     # RapidOCR, whose models are hosted on ModelScope rather than GitHub.
     pipeline_options.ocr_options = EasyOcrOptions()

@@ -43,3 +43,12 @@ def prepare_docling_source(input_path: Path, password: str | None = None) -> Pat
     from docling.datamodel.base_models import DocumentStream
 
     return DocumentStream(name=input_path.name, stream=buffer)
+
+
+def count_pages(source: Path | DocumentStream) -> int:
+    """Page count of what ``prepare_docling_source`` returned, leaving a stream rewound."""
+    if isinstance(source, Path):
+        return len(PdfReader(source).pages)
+    count = len(PdfReader(source.stream).pages)
+    source.stream.seek(0)
+    return count

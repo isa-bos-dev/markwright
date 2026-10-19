@@ -10,7 +10,7 @@ license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.12"
 dependencies = [
     # Conversion engine: PDF layout, tables, headings and images.
-    "docling>=2.130.0",
+    "docling>=2.132.0",
     # Imported directly (document model and image-reference mode); pinned so a
     # docling upgrade cannot silently drop it.
     "docling-core>=2.98.0",

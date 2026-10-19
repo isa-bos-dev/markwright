@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from docling.datamodel.base_models import DocumentStream
@@ -9,7 +10,12 @@ from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DictionaryObject, NameObject, StreamObject
 
 from markwright.core.exceptions import InvalidPasswordError
-from markwright.core.pdf_source import count_pages, open_region_reader, prepare_docling_source
+from markwright.core.pdf_source import (
+    _widen_to_embedded_image,
+    count_pages,
+    open_pdf_regions,
+    prepare_docling_source,
+)
 
 # --- Success cases ---
 
@@ -145,17 +151,49 @@ def _pdf_with_two_text_lines(path: Path) -> Path:
 def test_region_reader_returns_the_text_layer_with_its_line_breaks(tmp_path: Path) -> None:
     path = _pdf_with_two_text_lines(tmp_path / "code.pdf")
 
-    with open_region_reader(path) as read_region:
-        text = read_region(1, BoundingBox(l=0, t=100, r=200, b=0))
+    with open_pdf_regions(path) as regions:
+        text = regions.text(1, BoundingBox(l=0, t=100, r=200, b=0))
 
     assert text.splitlines() == ["int x;", "return x;"]
+
+
+def test_region_reader_renders_just_the_requested_region(tmp_path: Path) -> None:
+    path = _pdf_with_two_text_lines(tmp_path / "code.pdf")
+
+    with open_pdf_regions(path) as regions:
+        image = regions.image(1, BoundingBox(l=10, t=80, r=110, b=30))
+
+    # 100 x 50 points plus 2pt of slack per side, at 2x: (104 x 54) * 2.
+    assert image.size == (208, 108)
 
 
 def test_region_reader_also_reads_a_decrypted_in_memory_stream(tmp_path: Path) -> None:
     path = _pdf_with_two_text_lines(tmp_path / "code.pdf")
     stream = DocumentStream(name="code.pdf", stream=BytesIO(path.read_bytes()))
 
-    with open_region_reader(stream) as read_region:
-        text = read_region(1, BoundingBox(l=0, t=100, r=200, b=0))
+    with open_pdf_regions(stream) as regions:
+        text = regions.text(1, BoundingBox(l=0, t=100, r=200, b=0))
 
     assert "return x;" in text
+
+
+def _page_with_images(*bounds: tuple[float, float, float, float]) -> SimpleNamespace:
+    objects = [SimpleNamespace(type=3, get_bounds=lambda b=b: b) for b in bounds]
+    return SimpleNamespace(get_objects=lambda: iter(objects))
+
+
+def test_a_region_on_a_screenshot_is_widened_to_the_whole_screenshot() -> None:
+    """docling's box covers only the OCR'd text: the screenshot's own edges win."""
+    page = _page_with_images((57, 288, 284, 481))
+
+    widened = _widen_to_embedded_image(page, BoundingBox(l=64, t=479, r=235, b=297))
+
+    assert widened == (57, 288, 284, 481)
+
+
+def test_an_image_the_region_barely_touches_does_not_widen_it() -> None:
+    page = _page_with_images((200, 0, 600, 300))
+
+    widened = _widen_to_embedded_image(page, BoundingBox(l=0, t=100, r=210, b=0))
+
+    assert widened == (0, 0, 210, 100)

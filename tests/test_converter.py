@@ -12,6 +12,7 @@ from docling.datamodel.document import ErrorItem, FailureCategory
 from docling.datamodel.pipeline_options import EasyOcrOptions
 from docling_core.types.doc import BoundingBox, DocItemLabel, ImageRef, ProvenanceItem
 from docling_core.types.doc.document import DoclingDocument
+from pypdf import PdfWriter
 
 from markwright.core.converter import ConversionStage, ConversionWarning, convert_pdf_to_md
 from markwright.core.exceptions import (
@@ -356,6 +357,23 @@ def test_a_document_timeout_is_set_so_a_hostile_pdf_cannot_hang_forever(
 
     assert options.document_timeout is not None
     assert options.document_timeout > 0
+
+
+def test_the_document_timeout_grows_with_the_page_count_so_long_pdfs_are_not_cut(
+    conversion_result_factory: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    writer = PdfWriter()
+    for _ in range(62):
+        writer.add_blank_page(width=72, height=72)
+    long_pdf = tmp_path / "long.pdf"
+    with long_pdf.open("wb") as f:
+        writer.write(f)
+
+    options = _run_and_capture_pipeline_options(monkeypatch, long_pdf, conversion_result_factory())
+
+    assert options.document_timeout == 62 * 120.0
 
 
 def test_inference_uses_every_physical_cpu_core(

@@ -6,7 +6,7 @@ from docling.datamodel.base_models import DocumentStream
 from pypdf import PdfReader
 
 from markwright.core.exceptions import InvalidPasswordError
-from markwright.core.pdf_source import prepare_docling_source
+from markwright.core.pdf_source import count_pages, prepare_docling_source
 
 # --- Success cases ---
 
@@ -107,3 +107,12 @@ def test_successful_decryption_does_not_write_any_file_to_disk(
 
     after = set(tmp_path.rglob("*"))
     assert before == after
+
+
+def test_count_pages_rewinds_a_decrypted_stream(
+    encrypted_pdf_factory: Callable[..., Path],
+) -> None:
+    source = prepare_docling_source(encrypted_pdf_factory(password="right-pw"), "right-pw")
+
+    assert count_pages(source) == 1
+    assert source.stream.tell() == 0

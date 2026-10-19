@@ -23,6 +23,7 @@ from markwright.core.heading_hierarchy import fix_heading_levels
 from markwright.core.list_markers import fix_broken_list_markers, keep_original_list_numbers
 from markwright.core.margin_blocks import relocate_margin_blocks
 from markwright.core.models import find_models_dir
+from markwright.core.page_breaks import join_across_page_breaks
 from markwright.core.paths import OutputPaths, resolve_output_paths
 from markwright.core.pdf_source import count_pages, open_pdf_regions, prepare_docling_source
 from markwright.core.text_sanitization import fix_mangled_spaces
@@ -114,6 +115,9 @@ def convert_pdf_to_md(
     # lines, and a block it reformats no longer matches the PDF's text layer.
     with open_pdf_regions(source) as regions:
         restore_code_blocks(result.document, regions)
+    # After restore_code_blocks, so a code block cut by a page break is
+    # rejoined from its two already line-restored halves.
+    join_across_page_breaks(result.document)
     fix_mangled_spaces(result.document)
     fix_heading_levels(result.document)
     relocate_footnotes(result.document)

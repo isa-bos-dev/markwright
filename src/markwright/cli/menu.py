@@ -47,9 +47,12 @@ def resolve_choice(raw: str, pdfs: list[Path]) -> Path:
 
     An out-of-range number falls through to being treated as a literal path,
     which the normal "unsupported file" handling already reports clearly —
-    no separate "invalid number" error is needed.
+    no separate "invalid number" error is needed. Surrounding quotes are
+    dropped, since Windows Explorer's "Copy as path" always adds them.
     """
     raw = raw.strip()
+    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in "\"'":
+        raw = raw[1:-1].strip()
     if raw.isdigit():
         index = int(raw) - 1
         if 0 <= index < len(pdfs):

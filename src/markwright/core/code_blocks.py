@@ -20,6 +20,15 @@ if TYPE_CHECKING:
 # applies to a different, much rarer shape of CodeItem (see format_code_blocks).
 _FENCE = re.compile(r"```\n(.*?)\n```", re.DOTALL)
 
+# An include line is C (or C++) beyond doubt, on its own.
+_C_INCLUDE = re.compile(r"^\s*#\s*include\s*[<\"]", re.MULTILINE)
+# A C declaration: "unsigned int x;", "void f(", "char *p =".
+_C_DECLARATION = re.compile(
+    r"\b(?:void|char|short|int|long|float|double|unsigned|signed|struct|union)\b"
+    r"[\w\s*]*\b\w+\s*[;(=\[,)]"
+)
+_NOT_C = re.compile(r"\b(?:class|import|public|private|namespace|std|def|function)\b|::")
+
 
 def format_code_blocks(document: DoclingDocument) -> list[str]:
     """Reformat and tag code blocks, returning a fence language per block, in order.
@@ -88,4 +97,23 @@ def _detect_and_reformat(item: CodeItem) -> CodeLanguageLabel:
         item.text = "\n".join(pretty_lines)
         return CodeLanguageLabel.XML
 
+    if _looks_like_c(item.text):
+        return CodeLanguageLabel.C
     return CodeLanguageLabel.BASH
+
+
+def _looks_like_c(text: str) -> bool:
+    """Whether ``text`` reads as C source rather than shell commands.
+
+    Unlike JSON/XML this is a heuristic, so short of an include line (C
+    beyond doubt on its own) it asks for two independent signals: a C
+    declaration and C's statement syntax (a ``;`` or ``{``). A shell command
+    naming a ``.c`` file has neither. Languages sharing C's declarations that
+    announce themselves (Java's ``class``/``import``, C++'s ``::``/``std``)
+    are not taken for it.
+    """
+    if _NOT_C.search(text):
+        return False
+    if _C_INCLUDE.search(text):
+        return True
+    return bool(_C_DECLARATION.search(text)) and (";" in text or "{" in text)

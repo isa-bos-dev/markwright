@@ -1,3 +1,4 @@
+import pytest
 from docling_core.types.doc import CodeLanguageLabel
 from docling_core.types.doc.document import DoclingDocument
 
@@ -29,6 +30,44 @@ def test_valid_xml_is_pretty_printed_and_tagged() -> None:
     assert item.code_language == CodeLanguageLabel.XML
     assert item.text == "<a>\n  <b>1</b>\n  <c>2</c>\n</a>"
     assert languages == ["xml"]
+
+
+# --- C source is tagged as c, untouched ---
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "void proc2(unsigned int param1) {\n unsigned int eax_1;\n}",
+        " union { __size32 * x9; int x10; } * x27;",
+        "#include <stdio.h>",
+    ],
+)
+def test_c_source_is_tagged_as_c(text: str) -> None:
+    doc = DoclingDocument(name="test")
+    item = doc.add_code(text=text, code_language=CodeLanguageLabel.UNKNOWN)
+
+    languages = format_code_blocks(doc)
+
+    assert languages == ["c"]
+    assert item.text == text
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "gcc ejemplo.c -o ejemplo",
+        "root@kali:#sudo apt-get install gdb",
+        "for i in 1 2; do echo $i; done",
+        "public class Main { int x; }",
+        "std::string name;",
+    ],
+)
+def test_shell_commands_and_other_c_like_languages_are_not_taken_for_c(text: str) -> None:
+    doc = DoclingDocument(name="test")
+    doc.add_code(text=text, code_language=CodeLanguageLabel.UNKNOWN)
+
+    assert format_code_blocks(doc) == ["bash"]
 
 
 # --- Anything else with an unknown language defaults to bash, untouched ---

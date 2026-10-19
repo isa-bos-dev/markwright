@@ -145,3 +145,44 @@ def test_pages_are_handled_independently() -> None:
     assert markdown.index("Página 1, párrafo principal.") < markdown.index(header1.text)
     assert markdown.index(header1.text) < markdown.index("Página 2, párrafo principal.")
     assert markdown.index("Página 2, párrafo principal.") < markdown.index(header2.text)
+
+
+def _at(doc: DoclingDocument, label: DocItemLabel, text: str, top: float, left: float):
+    prov = ProvenanceItem(
+        page_no=1, bbox=BoundingBox(l=left, t=top, r=left + 100, b=top - 5), charspan=(0, 10)
+    )
+    return doc.add_text(label=label, text=text, prov=prov)
+
+
+def test_main_column_text_read_after_the_margin_box_stays_in_the_main_column() -> None:
+    """2.1, page 26: the page's last code line is read after its margin box."""
+    doc = DoclingDocument(name="test")
+    near = _at(doc, DocItemLabel.TEXT, "Párrafo a la altura del recuadro.", 525, 57)
+    last = _at(doc, DocItemLabel.TEXT, "Último párrafo de la columna.", 172, 57)
+    header = _at(doc, DocItemLabel.SECTION_HEADER, "Enlaces recomendados", 521, 423)
+    link = _at(doc, DocItemLabel.TEXT, "Unsafe (C# Reference).", 499, 417)
+    code = doc.add_code(
+        text="char strcat(char *dest, const char *src)",
+        prov=ProvenanceItem(
+            page_no=1, bbox=BoundingBox(l=71, t=140, r=263, b=132), charspan=(0, 1)
+        ),
+    )
+
+    relocate_margin_blocks(doc)
+
+    order = [item.text for item, _ in doc.iterate_items()]
+    assert order == [near.text, header.text, link.text, last.text, code.text]
+
+
+def test_blocks_are_found_in_reading_order_not_insertion_order() -> None:
+    doc = DoclingDocument(name="test")
+    top = _at(doc, DocItemLabel.TEXT, "Primer párrafo.", 700, 57)
+    bottom = _at(doc, DocItemLabel.TEXT, "Segundo párrafo.", 300, 57)
+    # Added last but read right after "top": nothing here is a margin box.
+    middle = _at(doc, DocItemLabel.TEXT, "Párrafo intermedio.", 500, 57)
+    doc.body.children.remove(middle.get_ref())
+    doc.body.children.insert(1, middle.get_ref())
+
+    relocate_margin_blocks(doc)
+
+    assert [item.text for item, _ in doc.iterate_items()] == [top.text, middle.text, bottom.text]

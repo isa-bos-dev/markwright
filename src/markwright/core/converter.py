@@ -120,8 +120,10 @@ def convert_pdf_to_md(
     join_across_page_breaks(result.document)
     fix_mangled_spaces(result.document)
     fix_heading_levels(result.document)
-    relocate_footnotes(result.document)
+    # Margin blocks first: they are found by reading order, which moving a
+    # footnote next to its marker would already have changed.
     relocate_margin_blocks(result.document)
+    relocate_footnotes(result.document)
     italicize_captions(result.document)
     code_fence_languages = format_code_blocks(result.document)
 

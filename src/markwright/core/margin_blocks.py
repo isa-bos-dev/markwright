@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from docling_core.types.doc import DocItemLabel
+from docling_core.types.doc import DocItemLabel, TextItem
 
 from markwright.core.document_tree import is_inside_figure, move_item_after
 from markwright.core.footnotes import _FOOTNOTE_START
@@ -16,7 +16,6 @@ if TYPE_CHECKING:
         FormulaItem,
         ListItem,
         SectionHeaderItem,
-        TextItem,
         TitleItem,
     )
 
@@ -37,6 +36,8 @@ if TYPE_CHECKING:
 _IGNORED_LABELS = frozenset(
     {DocItemLabel.PAGE_HEADER, DocItemLabel.PAGE_FOOTER, DocItemLabel.CAPTION}
 )
+# A margin column's items start within this much of each other's left edge.
+_MARGIN_COLUMN_SLACK_POINTS = 30.0
 
 
 def relocate_margin_blocks(document: DoclingDocument) -> None:
@@ -69,7 +70,12 @@ def relocate_margin_blocks(document: DoclingDocument) -> None:
     of a footnote-shaped item is left exactly where docling put it.
     """
     by_page: dict[int, list[DocTextItem]] = defaultdict(list)
-    for item in document.texts:
+    # Reading order, not document.texts' insertion order: an item added
+    # after conversion (a restored footer, a split paragraph) sits at the
+    # end of document.texts whatever its real place on the page.
+    for item, _ in document.iterate_items():
+        if not isinstance(item, TextItem):
+            continue
         if item.label in _IGNORED_LABELS or not item.prov or is_inside_figure(document, item):
             continue
         by_page[item.prov[0].page_no].append(item)
@@ -91,7 +97,11 @@ def relocate_margin_blocks(document: DoclingDocument) -> None:
 
 
 def _split_columns(items: list[DocTextItem]) -> tuple[list[DocTextItem], list[DocTextItem]]:
-    """Split a page's items at the first "jump back up" in reading order."""
+    """Split a page's items at the first "jump back up" in reading order.
+
+    Main-column text read after the margin run (the page's last code line,
+    say) starts well left of the margin column and stays in the main column.
+    """
     last_t: float | None = None
     split_index = len(items)
     for index, item in enumerate(items):
@@ -100,7 +110,13 @@ def _split_columns(items: list[DocTextItem]) -> tuple[list[DocTextItem], list[Do
             split_index = index
             break
         last_t = top
-    return items[:split_index], items[split_index:]
+    run = items[split_index:]
+    if not run:
+        return items, []
+    margin_left = run[0].prov[0].bbox.l - _MARGIN_COLUMN_SLACK_POINTS
+    margin = [item for item in run if item.prov[0].bbox.l >= margin_left]
+    main = items[:split_index] + [item for item in run if item.prov[0].bbox.l < margin_left]
+    return main, margin
 
 
 def _group_into_blocks(items: list[DocTextItem]) -> list[list[DocTextItem]]:

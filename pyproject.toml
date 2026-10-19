@@ -36,6 +36,10 @@ dependencies = [
     # only reports logical ones). Already installed transitively; declared
     # because it is now imported directly.
     "psutil>=7.2.2",
+    # Reads the PDF's own text layer to restore code-block line breaks docling
+    # flattens. Already installed transitively; declared because it is now
+    # imported directly.
+    "pypdfium2>=5.13.0",
 ]
 
 [project.scripts]
@@ -112,6 +116,11 @@ extra_checks = true
 no_implicit_reexport = true
 strict_equality = true
 warn_return_any = true
+
+# pypdfium2 ships no type information and has no published stubs package.
+[[tool.mypy.overrides]]
+module = "pypdfium2"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

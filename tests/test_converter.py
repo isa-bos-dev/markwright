@@ -358,6 +358,39 @@ def test_a_document_timeout_is_set_so_a_hostile_pdf_cannot_hang_forever(
     assert options.document_timeout > 0
 
 
+def test_inference_uses_every_physical_cpu_core(
+    plain_pdf_factory: Callable[..., Path],
+    conversion_result_factory: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("markwright.core.converter._physical_cpu_cores", lambda: 24)
+    environment = {
+        k: v for k, v in os.environ.items() if k not in ("DOCLING_NUM_THREADS", "OMP_NUM_THREADS")
+    }
+
+    options = _run_and_capture_pipeline_options(
+        monkeypatch, plain_pdf_factory(), conversion_result_factory(), environment
+    )
+
+    assert options.accelerator_options.num_threads == 24
+
+
+def test_an_explicit_thread_count_from_the_user_is_respected(
+    plain_pdf_factory: Callable[..., Path],
+    conversion_result_factory: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("markwright.core.converter._physical_cpu_cores", lambda: 24)
+    monkeypatch.setenv("DOCLING_NUM_THREADS", "2")
+
+    options = _run_and_capture_pipeline_options(
+        monkeypatch, plain_pdf_factory(), conversion_result_factory()
+    )
+
+    # docling reads the variable itself (at import time); the core count must not win.
+    assert options.accelerator_options.num_threads != 24
+
+
 def test_a_local_models_folder_is_used_and_keeps_the_conversion_offline(
     plain_pdf_factory: Callable[..., Path],
     conversion_result_factory: Callable[..., SimpleNamespace],

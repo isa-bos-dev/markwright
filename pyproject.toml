@@ -32,6 +32,10 @@ dependencies = [
     # Already installed transitively; declared because it is now imported
     # directly.
     "defusedxml>=0.7.1",
+    # Physical CPU core count for docling's inference threads (os.cpu_count()
+    # only reports logical ones). Already installed transitively; declared
+    # because it is now imported directly.
+    "psutil>=7.2.2",
 ]
 
 [project.scripts]

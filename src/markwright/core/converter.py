@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from markwright.core.captions import italicize_captions
 from markwright.core.code_blocks import apply_code_fence_languages, format_code_blocks
-from markwright.core.code_lines import restore_code_line_breaks
+from markwright.core.code_lines import restore_code_blocks
 from markwright.core.exceptions import (
     CorruptFileError,
     InvalidPasswordError,
@@ -24,7 +24,7 @@ from markwright.core.list_markers import fix_broken_list_markers, keep_original_
 from markwright.core.margin_blocks import relocate_margin_blocks
 from markwright.core.models import find_models_dir
 from markwright.core.paths import OutputPaths, resolve_output_paths
-from markwright.core.pdf_source import count_pages, open_region_reader, prepare_docling_source
+from markwright.core.pdf_source import count_pages, open_pdf_regions, prepare_docling_source
 from markwright.core.text_sanitization import fix_mangled_spaces
 
 if TYPE_CHECKING:
@@ -112,8 +112,8 @@ def convert_pdf_to_md(
     keep_original_list_numbers(result.document)
     # Before format_code_blocks: its JSON/XML detection should see the real
     # lines, and a block it reformats no longer matches the PDF's text layer.
-    with open_region_reader(source) as read_region:
-        restore_code_line_breaks(result.document, read_region)
+    with open_pdf_regions(source) as regions:
+        restore_code_blocks(result.document, regions)
     fix_mangled_spaces(result.document)
     fix_heading_levels(result.document)
     relocate_footnotes(result.document)

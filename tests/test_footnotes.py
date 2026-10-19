@@ -1,4 +1,4 @@
-from docling_core.types.doc import DocItemLabel
+from docling_core.types.doc import BoundingBox, DocItemLabel, ProvenanceItem
 from docling_core.types.doc.document import DoclingDocument
 
 from markwright.core.footnotes import relocate_footnotes
@@ -204,3 +204,37 @@ def test_a_word_read_inside_a_picture_is_never_used_as_a_footnote_anchor() -> No
     relocate_footnotes(doc)
 
     assert "(1) Fuente citada." in doc.export_to_markdown(escape_html=False)
+
+
+# --- The marker is looked for on the footnote's own page, never in arithmetic ---
+
+
+def _on_page(doc: DoclingDocument, text: str, page_no: int):
+    prov = ProvenanceItem(
+        page_no=page_no, bbox=BoundingBox(l=57, t=500, r=397, b=490), charspan=(0, len(text))
+    )
+    return doc.add_text(label=DocItemLabel.TEXT, text=text, prov=prov)
+
+
+def test_a_number_on_an_earlier_page_is_not_taken_for_the_marker() -> None:
+    doc = DoclingDocument(name="test")
+    earlier = _on_page(doc, "En cambio tiene el valor 1 en los valores negativos.", 8)
+    anchor = _on_page(doc, "El formato de complemento a 2 1 (Ca2) representa enteros.", 9)
+    _on_page(doc, "(1) Two's Complement.", 9)
+
+    relocate_footnotes(doc)
+
+    assert "<sup>" not in earlier.text
+    assert anchor.text == "El formato de complemento a 2<sup>1</sup> (Ca2) representa enteros."
+
+
+def test_a_number_after_a_minus_sign_is_arithmetic_not_a_marker() -> None:
+    doc = DoclingDocument(name="test")
+    formula = doc.add_text(label=DocItemLabel.TEXT, text="El rango es [ -2 n-1 , 2 n-1 - 1 ].")
+    anchor = doc.add_text(label=DocItemLabel.TEXT, text="Se llama complemento a 2 1 (Ca2).")
+    doc.add_text(label=DocItemLabel.TEXT, text="(1) Two's Complement.")
+
+    relocate_footnotes(doc)
+
+    assert "<sup>" not in formula.text
+    assert "<sup>1</sup>" in anchor.text

@@ -51,7 +51,7 @@ def relocate_footnotes(document: DoclingDocument) -> None:
 
     search_start = 0
     for footnote, number in footnotes:
-        found = _find_anchor(anchor_pool, number, search_start)
+        found = _find_anchor(anchor_pool, number, search_start, _page_of(footnote))
         if found is None:
             continue
         anchor, index = found
@@ -60,12 +60,20 @@ def relocate_footnotes(document: DoclingDocument) -> None:
         search_start = index + 1
 
 
+def _page_of(item: TextItem) -> int | None:
+    return item.prov[0].page_no if item.prov else None
+
+
 def _find_anchor(
-    anchor_pool: list[TextItem], number: str, search_start: int
+    anchor_pool: list[TextItem], number: str, search_start: int, page_no: int | None
 ) -> tuple[TextItem, int] | None:
     pattern = _marker_pattern(number)
     for index in range(search_start, len(anchor_pool)):
         item = anchor_pool[index]
+        # A footnote is printed on the same page as its marker: a "1" on an
+        # earlier page ("tiene el valor 1 en los negativos") is just a number.
+        if page_no is not None and page_no not in {prov.page_no for prov in item.prov}:
+            continue
         match = pattern.search(item.text)
         # A marker never opens its own paragraph — that shape belongs to a
         # numbered list item or heading ("1. Primer punto"), not a reference
@@ -83,8 +91,11 @@ def _marker_pattern(number: str) -> re.Pattern[str]:
     # ("3D", "10mg", "3-tuplas" are units/compound terms), nor come right
     # after a literal "^" (plain-text exponent notation, "10^3"). All three
     # found against the real sample PDF, wrongly matched as markers before
-    # these guards.
-    return re.compile(rf"(?<!\^)[ \t]?(?<!\d){re.escape(number)}(?!-?[\wÀ-ÿ])")
+    # these guards. Nor may it follow a minus or hyphen: "n-1", "2 n-1 - 1"
+    # are arithmetic, not a reference.
+    return re.compile(
+        rf"(?<!\^)[ \t]?(?<![\d\-–−])(?<![\-–−][ \t]){re.escape(number)}(?!-?[\wÀ-ÿ])"
+    )
 
 
 def _mark_superscript(item: TextItem, number: str) -> None:

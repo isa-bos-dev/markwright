@@ -17,6 +17,17 @@ def move_item_after(document: DoclingDocument, *, item: NodeItem, anchor: NodeIt
     *new* items only (it appends to the typed list, so passing an existing
     item would duplicate it).
     """
+    _move_next_to(document, item=item, anchor=anchor, offset=1)
+
+
+def move_item_before(document: DoclingDocument, *, item: NodeItem, anchor: NodeItem) -> None:
+    """Move an existing item to immediately precede another (see ``move_item_after``)."""
+    _move_next_to(document, item=item, anchor=anchor, offset=0)
+
+
+def _move_next_to(
+    document: DoclingDocument, *, item: NodeItem, anchor: NodeItem, offset: int
+) -> None:
     # .parent is always set for an item docling actually placed in the body
     # tree; the None case in its type is for a detached node, which a real
     # converted document never produces — skip rather than crash if it ever did.
@@ -26,7 +37,7 @@ def move_item_after(document: DoclingDocument, *, item: NodeItem, anchor: NodeIt
     old_parent.children.remove(item.get_ref())
     new_parent = anchor.parent.resolve(document)
     index = new_parent.children.index(anchor.get_ref())
-    new_parent.children.insert(index + 1, item.get_ref())
+    new_parent.children.insert(index + offset, item.get_ref())
     # Moving to a *different* parent group (not just a new position within
     # the same one, the only case this went untested against until a real
     # document caught it) must update the item's own back-reference too, or

@@ -1,7 +1,7 @@
 from docling_core.types.doc import BoundingBox, DocItemLabel, ProvenanceItem
 from docling_core.types.doc.document import DoclingDocument
 
-from markwright.core.page_breaks import join_across_page_breaks
+from markwright.core.page_breaks import join_across_page_breaks, split_joins_across_columns
 
 _BODY_LEFT = 56.7
 _BULLET_TEXT_LEFT = 73.7
@@ -182,3 +182,59 @@ def test_a_block_spanning_three_pages_is_joined_into_one() -> None:
     join_across_page_breaks(doc)
 
     assert [item.text for item in doc.texts] == ["a\nb\nc"]
+
+
+# --- docling's own join of two different columns is undone ---
+
+
+def _glued(doc: DoclingDocument, first: str, first_left: float, second: str, second_left: float):
+    item = doc.add_text(
+        label=DocItemLabel.TEXT,
+        text=f"{first} {second}",
+        prov=ProvenanceItem(
+            page_no=1,
+            bbox=BoundingBox(l=first_left, t=417, r=523, b=381),
+            charspan=(0, len(first)),
+        ),
+    )
+    item.prov.append(
+        ProvenanceItem(
+            page_no=2,
+            bbox=BoundingBox(l=second_left, t=771, r=397, b=700),
+            charspan=(len(first) + 1, len(first) + 1 + len(second)),
+        )
+    )
+    return item
+
+
+def test_a_margin_box_glued_to_the_next_pages_paragraph_is_split_apart() -> None:
+    """2.1: the end of "Enlaces recomendados" (page 26) was glued by docling to
+    the paragraph opening page 27."""
+    doc = DoclingDocument(name="test")
+    margin, body = "Pointer types: http://msdn.microsoft.com", "La función strcat no valida."
+    _text(doc, "Párrafo de la página 1.", 1, 300)
+    glued = _glued(doc, margin, 417, body, 57)
+    doc.add_code(text="char strcat(char *dest);", prov=_prov(1, 140, left=71))
+    _text(doc, "En realidad, strcat añade una copia.", 2, 679)
+
+    split_joins_across_columns(doc)
+
+    assert [item.text for item, _ in doc.iterate_items()] == [
+        "Párrafo de la página 1.",
+        margin,
+        "char strcat(char *dest);",
+        body,
+        "En realidad, strcat añade una copia.",
+    ]
+    assert [prov.page_no for prov in glued.prov] == [1]
+
+
+def test_a_paragraph_docling_joined_within_one_column_is_left_alone() -> None:
+    doc = DoclingDocument(name="test")
+    _glued(doc, "Un párrafo que sigue", 57, "en la página siguiente.", 57)
+
+    split_joins_across_columns(doc)
+
+    assert [item.text for item, _ in doc.iterate_items()] == [
+        "Un párrafo que sigue en la página siguiente."
+    ]

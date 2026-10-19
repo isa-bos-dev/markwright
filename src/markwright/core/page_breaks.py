@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from docling_core.types.doc import CodeItem, DocItem, DocItemLabel, ListItem, TextItem
 
-from markwright.core.document_tree import is_inside_figure
+from markwright.core.document_tree import is_inside_figure, move_item_before
 
 if TYPE_CHECKING:
     from docling_core.types.doc.document import DoclingDocument
@@ -71,6 +71,57 @@ def join_across_page_breaks(document: DoclingDocument) -> None:
 
     if absorbed:
         document.delete_items(node_items=absorbed)
+
+
+def split_joins_across_columns(document: DoclingDocument) -> None:
+    """Undo docling's own page-break join where it glued two different columns.
+
+    docling already joins some paragraphs across a page break itself, and
+    can pick the wrong pair: the end of a margin box ("Enlaces recomendados")
+    glued to the body paragraph opening the next page. The two parts of such
+    an item start far apart horizontally; each goes back to being its own
+    item, placed where its page starts in the reading order.
+    """
+    for item in list(document.texts):
+        if isinstance(item, CodeItem) or item.label != DocItemLabel.TEXT or len(item.prov) < 2:
+            continue
+        if item.parent is None or item.prov[-1].charspan[1] != len(item.text):
+            continue  # text already edited: its charspans no longer index it
+        cuts = [
+            index
+            for index in range(1, len(item.prov))
+            if abs(item.prov[index].bbox.l - item.prov[index - 1].bbox.l) > _SAME_COLUMN_POINTS
+        ]
+        if not cuts:
+            continue
+        text, provs = item.text, list(item.prov)
+        bounds = [0, *cuts, len(provs)]
+        parts = [provs[start:end] for start, end in zip(bounds, bounds[1:], strict=False)]
+        item.text = text[: parts[0][-1].charspan[1]].rstrip()
+        item.orig = item.text
+        item.prov = parts[0]
+        parent = item.parent.resolve(document)
+        for part in parts[1:]:
+            rest = text[part[0].charspan[0] : part[-1].charspan[1]].strip()
+            new = document.add_text(label=DocItemLabel.TEXT, text=rest, prov=part[0], parent=parent)
+            new.prov.extend(part[1:])
+            following = _first_on_page(document, part[0].page_no, exclude=new)
+            if following is not None:
+                move_item_before(document, item=new, anchor=following)
+
+
+def _first_on_page(document: DoclingDocument, page_no: int, exclude: DocItem) -> DocItem | None:
+    for node, _ in document.iterate_items():
+        if (
+            node is exclude
+            or is_inside_figure(document, node)
+            or not isinstance(node, DocItem)
+            or not node.prov
+        ):
+            continue
+        if node.prov[0].page_no >= page_no:
+            return node
+    return None
 
 
 def _last_in_column(items: list[DocItem], head: DocItem) -> DocItem | None:

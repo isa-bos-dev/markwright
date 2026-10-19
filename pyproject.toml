@@ -60,6 +60,8 @@ dev = [
     "ruff>=0.16.8",
     # Type stubs for defusedxml, imported directly in code_blocks.py.
     "types-defusedxml>=0.7.0",
+    # Type stubs for psutil, imported directly in converter.py.
+    "types-psutil>=7.2.2.20260906",
 ]
 
 [tool.ruff]

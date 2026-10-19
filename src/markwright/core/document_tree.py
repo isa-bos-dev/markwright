@@ -32,3 +32,20 @@ def move_item_after(document: DoclingDocument, *, item: NodeItem, anchor: NodeIt
     # document caught it) must update the item's own back-reference too, or
     # DoclingDocument's own tree validation rejects the result as corrupt.
     item.parent = new_parent.get_ref()
+
+
+def is_inside_figure(document: DoclingDocument, item: NodeItem) -> bool:
+    """Whether ``item`` is text docling read *inside* a picture or table.
+
+    OCR turns every word of a screenshot into its own text item, nested under
+    the picture and never exported to Markdown. Such words must never be
+    treated as body text, nor used as an anchor for ``move_item_after``: an
+    item moved after one lands *inside* the picture and silently disappears
+    from the output.
+    """
+    node = item
+    while node.parent is not None:
+        if node.parent.cref.startswith(("#/pictures/", "#/tables/")):
+            return True
+        node = node.parent.resolve(document)
+    return False

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from docling_core.types.doc import DocItemLabel
 
-from markwright.core.document_tree import move_item_after
+from markwright.core.document_tree import is_inside_figure, move_item_after
 
 if TYPE_CHECKING:
     from docling_core.types.doc.document import DoclingDocument
@@ -35,7 +35,11 @@ def relocate_footnotes(document: DoclingDocument) -> None:
     footnote whose marker can't be found in order is left exactly where
     docling put it, rather than guessed at.
     """
-    candidates = [item for item in document.texts if item.label == DocItemLabel.TEXT]
+    candidates = [
+        item
+        for item in document.texts
+        if item.label == DocItemLabel.TEXT and not is_inside_figure(document, item)
+    ]
     footnotes = [
         (item, match.group(1))
         for item in candidates

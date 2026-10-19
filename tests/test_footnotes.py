@@ -191,3 +191,16 @@ def test_a_detached_footnote_with_no_parent_is_skipped_instead_of_crashing() -> 
     relocate_footnotes(doc)  # must not raise even though the move is skipped
 
     assert anchor.text == "Una referencia<sup>1</sup> ."
+
+
+def test_a_word_read_inside_a_picture_is_never_used_as_a_footnote_anchor() -> None:
+    """A "1" OCR'd from a screenshot must not pull the footnote into the picture,
+    where it would be dropped from the Markdown."""
+    doc = DoclingDocument(name="test")
+    picture = doc.add_picture()
+    doc.add_text(label=DocItemLabel.TEXT, text="Paso 1 del asistente", parent=picture)
+    doc.add_text(label=DocItemLabel.TEXT, text="(1) Fuente citada.")
+
+    relocate_footnotes(doc)
+
+    assert "(1) Fuente citada." in doc.export_to_markdown(escape_html=False)

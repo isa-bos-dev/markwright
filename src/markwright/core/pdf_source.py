@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from io import BytesIO
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -10,7 +11,12 @@ from pypdf.errors import WrongPasswordError
 from markwright.core.exceptions import InvalidPasswordError
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from docling.datamodel.base_models import DocumentStream
+    from docling_core.types.doc import BoundingBox
+
+    from markwright.core.code_lines import RegionReader
 
 
 def prepare_docling_source(input_path: Path, password: str | None = None) -> Path | DocumentStream:
@@ -43,6 +49,29 @@ def prepare_docling_source(input_path: Path, password: str | None = None) -> Pat
     from docling.datamodel.base_models import DocumentStream
 
     return DocumentStream(name=input_path.name, stream=buffer)
+
+
+@contextmanager
+def open_region_reader(source: Path | DocumentStream) -> Iterator[RegionReader]:
+    """Read the PDF's own text layer inside a region, line breaks kept."""
+    import pypdfium2
+
+    pdf = pypdfium2.PdfDocument(source if isinstance(source, Path) else source.stream.getvalue())
+
+    def read_region(page_no: int, bbox: BoundingBox) -> str:
+        text_page = pdf[page_no - 1].get_textpage()
+        # 1pt of slack: docling's bbox hugs the glyphs, so a strict bound can
+        # clip the edge of the first or last character.
+        return str(
+            text_page.get_text_bounded(
+                left=bbox.l - 1, bottom=bbox.b - 1, right=bbox.r + 1, top=bbox.t + 1
+            )
+        )
+
+    try:
+        yield read_region
+    finally:
+        pdf.close()
 
 
 def count_pages(source: Path | DocumentStream) -> int:

@@ -1,12 +1,15 @@
 from collections.abc import Callable
+from io import BytesIO
 from pathlib import Path
 
 import pytest
 from docling.datamodel.base_models import DocumentStream
-from pypdf import PdfReader
+from docling_core.types.doc import BoundingBox
+from pypdf import PdfReader, PdfWriter
+from pypdf.generic import DictionaryObject, NameObject, StreamObject
 
 from markwright.core.exceptions import InvalidPasswordError
-from markwright.core.pdf_source import count_pages, prepare_docling_source
+from markwright.core.pdf_source import count_pages, open_region_reader, prepare_docling_source
 
 # --- Success cases ---
 
@@ -116,3 +119,43 @@ def test_count_pages_rewinds_a_decrypted_stream(
 
     assert count_pages(source) == 1
     assert source.stream.tell() == 0
+
+
+def _pdf_with_two_text_lines(path: Path) -> Path:
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=200, height=100)
+    font = DictionaryObject(
+        {
+            NameObject("/Type"): NameObject("/Font"),
+            NameObject("/Subtype"): NameObject("/Type1"),
+            NameObject("/BaseFont"): NameObject("/Helvetica"),
+        }
+    )
+    page[NameObject("/Resources")] = DictionaryObject(
+        {NameObject("/Font"): DictionaryObject({NameObject("/F1"): writer._add_object(font)})}
+    )
+    content = StreamObject()
+    content.set_data(b"BT /F1 12 Tf 10 60 Td (int x;) Tj 0 -20 Td (return x;) Tj ET")
+    page[NameObject("/Contents")] = writer._add_object(content)
+    with path.open("wb") as f:
+        writer.write(f)
+    return path
+
+
+def test_region_reader_returns_the_text_layer_with_its_line_breaks(tmp_path: Path) -> None:
+    path = _pdf_with_two_text_lines(tmp_path / "code.pdf")
+
+    with open_region_reader(path) as read_region:
+        text = read_region(1, BoundingBox(l=0, t=100, r=200, b=0))
+
+    assert text.splitlines() == ["int x;", "return x;"]
+
+
+def test_region_reader_also_reads_a_decrypted_in_memory_stream(tmp_path: Path) -> None:
+    path = _pdf_with_two_text_lines(tmp_path / "code.pdf")
+    stream = DocumentStream(name="code.pdf", stream=BytesIO(path.read_bytes()))
+
+    with open_region_reader(stream) as read_region:
+        text = read_region(1, BoundingBox(l=0, t=100, r=200, b=0))
+
+    assert "return x;" in text

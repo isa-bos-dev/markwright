@@ -107,6 +107,22 @@ def test_a_table_of_contents_keeps_its_section_numbers() -> None:
     ]
 
 
+def test_section_numbers_printed_without_a_final_dot_are_kept_too() -> None:
+    """ISO 27002's controls in 3.1 are listed as "12.1", "12.1.1", "12.2"."""
+    doc = DoclingDocument(name="test")
+    _numbered_list(
+        doc, [("12.1", "Requerimientos."), ("12.1.1", "Análisis."), ("12.2", "Proceso.")]
+    )
+
+    keep_original_list_numbers(doc)
+
+    assert doc.export_to_markdown().splitlines() == [
+        "- 12.1 Requerimientos.",
+        "- 12.1.1 Análisis.",
+        "- 12.2 Proceso.",
+    ]
+
+
 def test_a_plain_sequential_list_is_left_to_the_default_numbering() -> None:
     doc = DoclingDocument(name="test")
     items = _numbered_list(doc, [("1)", "Primero."), ("2)", "Segundo.")])

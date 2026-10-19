@@ -38,8 +38,8 @@ def fix_broken_list_markers(document: DoclingDocument) -> None:
         item.enumerated = True
 
 
-# A list number as the PDF printed it: "3.", "1.1." or "2)".
-_NUMBER = re.compile(r"\d+(?:\.\d+)*[.)]")
+# A list number as the PDF printed it: "3.", "1.1.", "2)" or "12.1".
+_NUMBER = re.compile(r"\d+(?:\.\d+)*[.)]?")
 # The same number left glued to the text when docling missed it as a marker
 # ("3.Disassemblers"); a letter must follow, so "3.5 GHz" is not taken for one.
 _GLUED_NUMBER = re.compile(r"^(\d+(?:\.\d+)*\.)\s*(?=[^\W\d_])")
@@ -66,7 +66,10 @@ def keep_original_list_numbers(document: DoclingDocument) -> None:
         numbered = [entry for entry in entries if entry is not None]
         if len(numbered) < len(entries):
             continue
-        if all(number[:-1] == str(position) for position, (_, number, _) in enumerate(numbered, 1)):
+        if all(
+            number.rstrip(".)") == str(position)
+            for position, (_, number, _) in enumerate(numbered, 1)
+        ):
             continue
         for item, number, text in numbered:
             item.text = f"{number} {text}"

@@ -24,6 +24,7 @@ from markwright.core.list_markers import fix_broken_list_markers, keep_original_
 from markwright.core.margin_blocks import relocate_margin_blocks
 from markwright.core.models import find_models_dir
 from markwright.core.page_breaks import join_across_page_breaks
+from markwright.core.page_footers import restore_misread_footers
 from markwright.core.paths import OutputPaths, resolve_output_paths
 from markwright.core.pdf_source import count_pages, open_pdf_regions, prepare_docling_source
 from markwright.core.text_sanitization import fix_mangled_spaces
@@ -106,6 +107,9 @@ def convert_pdf_to_md(
     if _is_partial_success(result):
         _notify(on_progress, ConversionStage.PARTIAL_SUCCESS, _classify_partial_success(result))
 
+    # First: what this puts back is then cleaned up like any other text
+    # (a restored code line gets its line breaks).
+    restore_misread_footers(result.document)
     # fix_broken_list_markers must run before fix_mangled_spaces: it still
     # needs to see the raw U+FFFF to recognize a marker docling failed to
     # split out (see list_markers.py).

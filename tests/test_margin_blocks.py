@@ -104,6 +104,24 @@ def test_page_headers_footers_and_captions_do_not_interfere_with_detection() -> 
     assert markdown.index(anchor.text) < markdown.index(header.text)
 
 
+def test_text_read_inside_a_picture_does_not_swallow_the_paragraphs_after_it() -> None:
+    """Regression: OCR'd screenshot words faked a column jump, and the body
+    paragraphs after the screenshot were moved into the picture and lost."""
+    doc = DoclingDocument(name="test")
+    _add(doc, DocItemLabel.SECTION_HEADER, "1.1. Reverse Engineering", 1, 509)
+    picture = doc.add_picture(prov=_prov(1, 481))
+    # Words of a screenshot, in the arbitrary order OCR returns them.
+    for top in (479, 449, 464):
+        doc.add_text(label=DocItemLabel.TEXT, text=f"ocr-{top}", prov=_prov(1, top), parent=picture)
+    after = _add(doc, DocItemLabel.TEXT, "Clang es un compilador.", 1, 158)
+
+    relocate_margin_blocks(doc)
+
+    assert after.parent is not None
+    assert after.parent.cref == "#/body"
+    assert "Clang es un compilador." in doc.export_to_markdown()
+
+
 def test_items_without_provenance_are_ignored() -> None:
     doc = DoclingDocument(name="test")
     doc.add_text(label=DocItemLabel.TEXT, text="Sin posición conocida.")

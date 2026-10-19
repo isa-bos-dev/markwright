@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from docling_core.types.doc import DocItemLabel
 
-from markwright.core.document_tree import move_item_after
+from markwright.core.document_tree import is_inside_figure, move_item_after
 from markwright.core.footnotes import _FOOTNOTE_START
 
 if TYPE_CHECKING:
@@ -70,7 +70,7 @@ def relocate_margin_blocks(document: DoclingDocument) -> None:
     """
     by_page: dict[int, list[DocTextItem]] = defaultdict(list)
     for item in document.texts:
-        if item.label in _IGNORED_LABELS or not item.prov:
+        if item.label in _IGNORED_LABELS or not item.prov or is_inside_figure(document, item):
             continue
         by_page[item.prov[0].page_no].append(item)
 

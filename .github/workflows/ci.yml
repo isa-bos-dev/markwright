@@ -12,13 +12,24 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch or PR cancels the run it supersedes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
+    name: Tests, lint and type-check
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v7
+      # Actions are pinned to a full commit SHA, not a tag: a tag can be moved
+      # to other code, a SHA cannot. Dependabot keeps both SHA and comment current.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Don't leave the GITHUB_TOKEN in .git/config for later steps.
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           enable-cache: true
 

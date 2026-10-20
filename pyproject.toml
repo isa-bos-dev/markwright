@@ -13,7 +13,7 @@ dependencies = [
     "docling>=2.132.0",
     # Imported directly (document model and image-reference mode); pinned so a
     # docling upgrade cannot silently drop it.
-    "docling-core>=2.98.0",
+    "docling-core>=2.101.1",
     # OCR engine. Declared explicitly because `docling` does not install it (only its
     # `easyocr` extra does) and it is forced over docling's default, RapidOCR, whose
     # models are hosted on ModelScope instead of GitHub.
@@ -55,7 +55,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "mypy>=2.3.1",
+    "mypy>=2.4.0",
     # Already installed transitively via docling-core; used directly by the
     # tests to build a hyperlink value for a CAPTION item.
     "pydantic>=2.0.0",
@@ -63,7 +63,7 @@ dev = [
     "pytest-cov>=7.1.0",
     # Builds the Windows .exe (REL, 009-release-1-0).
     "pyinstaller>=6.22.3",
-    "ruff>=0.16.8",
+    "ruff>=0.17.1",
     # Type stubs for defusedxml, imported directly in code_blocks.py.
     "types-defusedxml>=0.7.0",
     # Type stubs for psutil, imported directly in converter.py.

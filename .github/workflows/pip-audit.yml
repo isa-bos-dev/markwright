@@ -6,6 +6,12 @@ on:
   schedule:
     - cron: "23 4 * * 1" # Mondays, off-peak
 
+# Least privilege: the job only reads the code. Without this block the
+# GITHUB_TOKEN gets the repository's default permissions, which can include
+# write access.
+permissions:
+  contents: read
+
 jobs:
   audit:
     runs-on: windows-latest

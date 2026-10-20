@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege: the job only reads the code. Without this block the
+# GITHUB_TOKEN gets the repository's default permissions, which can include
+# write access.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: windows-latest

@@ -43,7 +43,7 @@ dependencies = [
     # The image type a code screenshot is rendered to (code_lines.py), and
     # used by the tests and scripts/generate_assets.py. Already installed
     # transitively via docling; declared because it is now imported directly.
-    "pillow>=12.3.0",
+    "pillow>=13.0.0",
 ]
 
 [project.scripts]
